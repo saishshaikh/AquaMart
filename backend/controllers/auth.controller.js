@@ -1,48 +1,145 @@
-import User from "../models/user.model"
-import 'bcrypt'  from  bcrypt
+import User from "../models/user.model.js";
+import bcrypt from "bcrypt";
+import GenerateToken from "../utils/token.js";
 
-import GenerateToken from "../utils/token.js"
 
-
-const signup = async(req,res) => {
+const signup = async (req, res) => {
     try {
-         const {fullName,email,password,mobile,role}=req.body
-         const user =await User.findOne({email})
-         if(user) {
-            res.status(400).json({MESSAGE : "USER ALREADY EXIST"})
-         }
+        const { fullName, email, password, mobile, role } = req.body;
 
-         if(password.length < 6) {
-            res.status(400).json({MESSAGE : "password must be at least 6 characters"})
-         }
+        const existingUser = await User.findOne({ email });
 
-         if(mobile.length < 106) {
-            res.status(400).json({MESSAGE : "Mobile Number must be at least 10 Digits"})
-         }
+        if (existingUser) {
+            return res.status(400).json({
+                MESSAGE: "USER ALREADY EXIST"
+            });
+        }
 
-         const hashpassword = await bcrypt.hashpassword(password,10)
+        if (password.length < 6) {
+            return res.status(400).json({
+                MESSAGE: "Password must be at least 6 characters"
+            });
+        }
 
-         const user = await User.create({
+        if (mobile.length < 10) {
+            return res.status(400).json({
+                MESSAGE: "Mobile Number must be at least 10 digits"
+            });
+        }
+
+        const hashPassword = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
             fullName,
             email,
             mobile,
             role,
-            password: hashpassword
-         })
+            password: hashPassword,
+        });
 
-         const token = await GenerateToken(user._id)
 
-         res.cookie ("token",token,{
-            secure : false,
-            sameSite : "strict"
-            maxAge : 7*24*60*60*1000
-            httponly : true
-         })
-         return res.status(201).json({user})
-         
+        const token = GenerateToken(user._id);
+
+        res.cookie("token", token, {
+            secure: false,
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true,
+        });
+
+
+        return res.status(201).json({
+            message: "Signup Successful",
+            user
+        });
+
+
     } catch (error) {
-                 return res.status(500).json({message :" signUp error" + error})
+        return res.status(500).json({
+            message: "SignUp Error: " + error.message,
+        });
+    }
+};
+
+
+
+const signin = async (req, res) => {
+    try {
+
+        const { email, password } = req.body;
+
+
+        const user = await User.findOne({ email });
+
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found",
+            });
+        }
+
+
+        const isMatch = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+
+        if (!isMatch) {
+            return res.status(400).json({
+                message: "Invalid Credentials",
+            });
+        }
+
+
+        const token = GenerateToken(user._id);
+
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: false,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+
+        return res.status(200).json({
+            message: "Login Successful",
+            user,
+        });
+
+
+    } catch (error) {
+
+        return res.status(500).json({
+            message: "SignIn Error: " + error.message,
+        });
 
     }
+};
 
-}
+
+
+const signout = async (req, res) => {
+    try {
+
+        res.clearCookie("token");
+
+
+        return res.status(200).json({
+            message: "Logout Successful",
+        });
+
+
+    } catch (error) {
+
+        return res.status(500).json({
+            message: "Logout Error",
+        });
+
+    }
+};
+
+
+
+export { signup, signin, signout };
