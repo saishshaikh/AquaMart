@@ -41,7 +41,9 @@
      Signup Successful
 ```
 
-  SIGNUP  PAGE
+  ## 🔐 Signup Page
+
+A fully animated Signup Page built with **React, Tailwind CSS, and GSAP**. Users can register using their personal information or login with **Google Authentication**. Features a modern responsive UI with smooth animations and interactive effects.
 
   
-<img width="1913" height="898" alt="image" src="https://github.com/user-attachments/assets/fca56b61-dc22-487a-8c00-8c3f483f96e1" />
+<img width="1000" height="898" alt="image" src="https://github.com/user-attachments/assets/fca56b61-dc22-487a-8c00-8c3f483f96e1" />
