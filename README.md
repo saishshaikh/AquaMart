@@ -1,37 +1,4 @@
-AUTHENTICATION
-│
-├── SIGNUP
-│   ├── Receive User Data (name, email, password)
-│   ├── Check Existing User
-│   ├── Validate Input
-│   ├── Hash Password
-│   ├── Save User
-│   ├── Generate JWT
-│   └── Set HTTP-Only Cookie
-│
-├── SIGNIN
-│   ├── Receive Login Data (email, password)
-│   ├── Find User By Email
-│   ├── Compare Password
-│   ├── Generate JWT
-│   └── Set HTTP-Only Cookie
-│
-├── SIGNOUT
-│   └── Clear Token Cookie
-│
-├── GOOGLE AUTH
-│   ├── Get Google User Data
-│   ├── Create/Find User Account
-│   ├── Generate JWT
-│   └── Set HTTP-Only Cookie
-│
-└── FORGOT PASSWORD
-    ├── Enter Email
-    ├── Check User
-    ├── Send Reset Link/OTP
-    ├── Reset Password
-    ├── Generate JWT
-    └── Set HTTP-Only Cookie
+![Uploading image.png…]()
 
 
 
