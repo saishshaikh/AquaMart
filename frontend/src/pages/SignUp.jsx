@@ -1,15 +1,19 @@
 import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import axios from "axios"
-import { Link } from 'react-router-dom';
+import axios from "axios";
+import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from "../firebase.js";
+
 gsap.registerPlugin(useGSAP);
 
 const SignUp = () => {
   const containerRef = useRef(null);
   const cardRef = useRef(null);
   const introFishRef = useRef(null);
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     role: 'user',
@@ -18,29 +22,11 @@ const SignUp = () => {
     mobile: '',
     password: ''
   });
-  const HandleSignUp = async () => {
-  try {
-    const result = await axios.post(
-      `${serverUrl}/api/auth/signup`,
-      {
-        fullName: formData.fullName,
-        email: formData.email,
-        mobile: formData.mobile,
-        password: formData.password,
-        role: formData.role,
-      },
-      {
-        withCredentials: true,
-      }
-    );
-
-    console.log(result.data);
-  } catch (error) {
-    console.error("SignUp fetch error:", error.response?.data || error.message);
-  }
-};
+  
   const [showPassword, setShowPassword] = useState(false);
   const [ripple, setRipple] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Advanced Password Strength Checker
   const getPasswordStrength = (pass) => {
@@ -55,6 +41,7 @@ const SignUp = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setError(''); // Clear error on change
   };
 
   const handleRippleEffect = (e) => {
@@ -65,17 +52,124 @@ const SignUp = () => {
     setTimeout(() => setRipple(null), 1000);
   };
 
-  const handleSubmit =async(e)=> {
+  // Handle SignUp
+  const HandleSignUp = async (e) => {
     e.preventDefault();
-    console.log("Advanced Form Submitted:", formData);
-    alert(`Success! Account created as ${formData.role.toUpperCase()}`);
-    await HandleSignUp();
+    
+    // Validation
+    if (!formData.fullName.trim()) {
+      setError('Full name is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    if (!formData.mobile.trim()) {
+      setError('Mobile number is required');
+      return;
+    }
+    if (formData.mobile.length < 10) {
+      setError('Mobile number must be at least 10 digits');
+      return;
+    }
+    if (!formData.password) {
+      setError('Password is required');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const result = await axios.post(
+        `${serverUrl}/api/auth/signup`,
+        {
+          fullName: formData.fullName,
+          email: formData.email,
+          mobile: formData.mobile,
+          password: formData.password,
+          role: formData.role,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log("SignUp Success:", result.data);
+      alert("Account created successfully! Please login.");
+      navigate('/signin'); // Redirect to login page
+      
+    } catch (error) {
+      console.error("SignUp Error:", error.response?.data || error.message);
+      setError(error.response?.data?.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleAuth = () => {
-    console.log("Google Authentication Triggered");
-    alert("Redirecting to Google Authentication...");
-  };
+  // Handle Google Auth
+const GoogleAuth = async () => {
+  if (!formData.mobile) {
+    setError("Please enter mobile number first.");
+    return;
+  }
+
+  if (formData.mobile.length !== 10) {
+    setError("Please enter a valid 10 digit mobile number.");
+    return;
+  }
+
+  setIsLoading(true);
+  setError('');
+
+  try {
+    const provider = new GoogleAuthProvider();
+
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    console.log("Google User:", {
+      name: user.displayName,
+      email: user.email
+    });
+
+    const response = await axios.post(
+      `${serverUrl}/api/auth/google`,
+      {
+        fullName: user.displayName,
+        email: user.email,
+        photo: user.photoURL,
+        mobile: formData.mobile,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    console.log("Google Auth Success:", response.data);
+
+    alert("Google authentication successful!");
+    navigate('/');
+
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    setError(
+      error.response?.data?.message ||
+      "Google authentication failed. Please try again."
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   useGSAP(() => {
     const tl = gsap.timeline();
@@ -211,7 +305,14 @@ const SignUp = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm form-anim">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={HandleSignUp} className="space-y-3">
           
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300 flex justify-between">
@@ -239,7 +340,12 @@ const SignUp = () => {
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Full Name</label>
             <input 
-              type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Enter your full name" required
+              type="text" 
+              name="fullName" 
+              value={formData.fullName} 
+              onChange={handleChange} 
+              placeholder="Enter your full name" 
+              required
               className="w-full px-3 py-2 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
             />
           </div>
@@ -247,7 +353,12 @@ const SignUp = () => {
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Email Address</label>
             <input 
-              type="email" name="email" value={formData.email} onChange={handleChange} placeholder="name@example.com" required
+              type="email" 
+              name="email" 
+              value={formData.email} 
+              onChange={handleChange} 
+              placeholder="name@example.com" 
+              required
               className="w-full px-3 py-2 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
             />
           </div>
@@ -255,7 +366,12 @@ const SignUp = () => {
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Mobile Number</label>
             <input 
-              type="tel" name="mobile" value={formData.mobile} onChange={handleChange} placeholder="Enter 10-digit mobile number" required
+              type="tel" 
+              name="mobile" 
+              value={formData.mobile} 
+              onChange={handleChange} 
+              placeholder="Enter 10-digit mobile number" 
+              required
               className="w-full px-3 py-2 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
             />
           </div>
@@ -272,11 +388,17 @@ const SignUp = () => {
             
             <div className="relative">
               <input 
-                type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} placeholder="Create a strong password" required
+                type={showPassword ? 'text' : 'password'} 
+                name="password" 
+                value={formData.password} 
+                onChange={handleChange} 
+                placeholder="Create a strong password" 
+                required
                 className="w-full px-3 py-2 pr-10 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
               />
               <button 
-                type="button" onClick={() => setShowPassword(!showPassword)}
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs focus:outline-none"
               >
                 {showPassword ? 'Hide' : 'Show'}
@@ -293,9 +415,19 @@ const SignUp = () => {
           <div className="form-anim pt-1">
             <button
               type="submit" 
-              className="w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 text-sm tracking-wide transform active:scale-[0.98]"
+              disabled={isLoading}
+              className={`w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 text-sm tracking-wide transform active:scale-[0.98] flex items-center justify-center gap-2 ${
+                isLoading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              Create Account
+              {isLoading ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Creating Account...
+                </>
+              ) : (
+                'Create Account'
+              )}
             </button>
           </div>
         </form>
@@ -314,8 +446,11 @@ const SignUp = () => {
         <div className="form-anim">
           <button 
             type="button"
-            onClick={handleGoogleAuth}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-[#020818]/90 hover:bg-[#07132d] border border-cyan-900/50 hover:border-cyan-500/50 rounded-xl text-slate-200 font-medium transition-all duration-300 text-sm group shadow-md shadow-black/40"
+            onClick={GoogleAuth}
+            disabled={isLoading}
+            className={`w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-[#020818]/90 hover:bg-[#07132d] border border-cyan-900/50 hover:border-cyan-500/50 rounded-xl text-slate-200 font-medium transition-all duration-300 text-sm group shadow-md shadow-black/40 ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
             <svg className="w-4 h-4 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
@@ -327,14 +462,14 @@ const SignUp = () => {
           </button>
         </div>
 
-       <div className="text-center mt-3.5 form-anim">
-  <p className="text-xs text-slate-400">
-    Already have an account?{' '}
-    <Link to="/signin" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
-      Log in
-    </Link>
-  </p>
-</div>
+        <div className="text-center mt-3.5 form-anim">
+          <p className="text-xs text-slate-400">
+            Already have an account?{' '}
+            <Link to="/signin" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
+              Log in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

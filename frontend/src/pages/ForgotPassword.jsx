@@ -2,8 +2,93 @@ import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import axios from "axios";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
+import { Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+
+const handleSendOtp = async () => {
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/auth/send-otp`,
+      {
+        email,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    alert(result.data.message);
+
+    // OTP screen show karo
+    setStep(2);
+
+  } catch (error) {
+    alert(error.response?.data?.message || "Failed to send OTP");
+  }
+};
+
+
+const handleVerifyOtp = async (e) => {
+  e.preventDefault();
+
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/auth/verify-otp`,
+      {
+        email,
+        otp,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    alert(result.data.message);
+
+    // OTP verify hone ke baad password reset form dikhao
+    setStep(3);
+
+  } catch (error) {
+    alert(error.response?.data?.message || "Invalid OTP");
+  }
+};
+
+const handleResetPassword = async (e) => {
+  e.preventDefault();
+
+  if (newPassword !== confirmPassword) {
+    return alert("Passwords do not match");
+  }
+
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/auth/reset-password`,
+      {
+        email,
+        newPassword,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    alert(result.data.message);
+
+    // Reset fields
+    setEmail("");
+    setOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
+
+    // Redirect to Sign In
+    navigate("/signin");
+
+  } catch (error) {
+    alert(error.response?.data?.message || "Failed to reset password");
+  }
+};
+
 
 gsap.registerPlugin(useGSAP);
 
@@ -11,10 +96,22 @@ const ForgotPassword = () => {
   const containerRef = useRef(null);
   const cardRef = useRef(null);
   const introFishRef = useRef(null);
+  const navigate = useNavigate();
 
+  // Step management: 1=Email, 2=OTP, 3=New Password
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(60);
+  const [isResendDisabled, setIsResendDisabled] = useState(true);
+  const [errors, setErrors] = useState({});
+  const [isSuccess, setIsSuccess] = useState(false);
   const [ripple, setRipple] = useState(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleRippleEffect = (e) => {
     const rect = containerRef.current.getBoundingClientRect();
@@ -24,19 +121,173 @@ const ForgotPassword = () => {
     setTimeout(() => setRipple(null), 1000);
   };
 
-  const handleSubmit = async (e) => {
+  // Handle Send OTP
+  const handleSendOTP = async (e) => {
     e.preventDefault();
+    const error = {};
+    if (!email) error.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) error.email = 'Please enter a valid email';
+    
+    if (Object.keys(error).length > 0) {
+      setErrors(error);
+      return;
+    }
+
+    setIsLoading(true);
     try {
+      // Send OTP API call
       const result = await axios.post(
-        `${serverUrl}/api/auth/forgot-password`,
+        `${serverUrl}/api/auth/send-otp`,
         { email },
         { withCredentials: true }
       );
       console.log(result.data);
-      setIsSubmitted(true);
+      setStep(2);
+      setOtpTimer(60);
+      setIsResendDisabled(true);
+      setErrors({});
+      // Animation for step transition
+      gsap.fromTo('.otp-section', 
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.5 }
+      );
     } catch (error) {
-      console.error("Forgot password error:", error.response?.data || error.message);
-      alert(error.response?.data?.message || "Something went wrong. Please try again.");
+      console.error("Send OTP error:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle OTP Verification
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    const otpValue = otp.join('');
+    if (otpValue.length !== 6) {
+      setErrors({ otp: 'Please enter complete 6-digit OTP' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await axios.post(
+        `${serverUrl}/api/auth/verify-otp`,
+        { email, otp: otpValue },
+        { withCredentials: true }
+      );
+      console.log(result.data);
+      setStep(3);
+      setErrors({});
+      // Animation for password section
+      gsap.fromTo('.password-section',
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.5 }
+      );
+    } catch (error) {
+      console.error("Verify OTP error:", error.response?.data || error.message);
+      setErrors({ otp: error.response?.data?.message || "Invalid OTP. Please try again." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle Reset Password
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    const error = {};
+    if (newPassword.length < 8) error.newPassword = 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(newPassword)) error.newPassword = 'Include at least one uppercase letter';
+    if (!/[a-z]/.test(newPassword)) error.newPassword = 'Include at least one lowercase letter';
+    if (!/[0-9]/.test(newPassword)) error.newPassword = 'Include at least one number';
+    if (newPassword !== confirmPassword) error.confirmPassword = 'Passwords do not match';
+    
+    if (Object.keys(error).length > 0) {
+      setErrors(error);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await axios.post(
+        `${serverUrl}/api/auth/reset-password`,
+        { email, newPassword },
+        { withCredentials: true }
+      );
+      console.log(result.data);
+      setIsSuccess(true);
+      // Success animation
+      gsap.fromTo('.success-anim',
+        { scale: 0.5, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.6, ease: 'back.out(1.7)' }
+      );
+    } catch (error) {
+      console.error("Reset password error:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Failed to reset password. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle Resend OTP
+  const handleResendOTP = async () => {
+    setIsResendDisabled(true);
+    setOtpTimer(60);
+    setOtp(['', '', '', '', '', '']);
+    setErrors({});
+    
+    try {
+      await axios.post(
+        `${serverUrl}/api/auth/send-otp`,
+        { email },
+        { withCredentials: true }
+      );
+      gsap.fromTo('.resend-success',
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' }
+      );
+      setTimeout(() => {
+        gsap.to('.resend-success', { opacity: 0, duration: 0.3 });
+      }, 2000);
+    } catch (error) {
+      console.error("Resend OTP error:", error.response?.data || error.message);
+      alert("Failed to resend OTP. Please try again.");
+    }
+  };
+
+  // OTP Timer effect
+  React.useEffect(() => {
+    let interval = null;
+    if (isResendDisabled && otpTimer > 0 && step === 2) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (otpTimer === 0 && step === 2) {
+      setIsResendDisabled(false);
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isResendDisabled, otpTimer, step]);
+
+  // OTP input handler with auto-focus
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) return;
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setErrors({});
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  // OTP keydown handler for backspace
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      if (prevInput) prevInput.focus();
     }
   };
 
@@ -81,6 +332,373 @@ const ForgotPassword = () => {
     );
 
   }, { scope: containerRef });
+
+  // Render Step Indicator
+  const renderStepIndicator = () => (
+    <div className="flex items-center justify-center mb-6 space-x-3 form-anim">
+      {[1, 2, 3].map((num) => (
+        <div key={num} className="flex items-center">
+          <div className={`
+            w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+            transition-all duration-500 relative
+            ${step >= num 
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30' 
+              : 'bg-slate-800 text-slate-500'
+            }
+          `}>
+            {step > num ? (
+              <CheckCircle className="w-4 h-4" />
+            ) : (
+              num
+            )}
+          </div>
+          {num < 3 && (
+            <div className={`
+              w-8 h-0.5 mx-1 transition-all duration-500
+              ${step > num ? 'bg-cyan-500' : 'bg-slate-700'}
+            `} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  // Render Email Step
+  const renderEmailStep = () => (
+    <form onSubmit={handleSendOTP} className="space-y-4">
+      <div className="form-anim space-y-1">
+        <label className="text-xs font-medium text-slate-300">Email Address</label>
+        <input 
+          type="email" 
+          value={email} 
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setErrors({});
+          }} 
+          placeholder="name@example.com" 
+          required
+          className={`
+            w-full px-3 py-2.5 bg-[#020818]/90 border rounded-xl text-slate-100 
+            placeholder-slate-500 text-sm focus:outline-none focus:ring-2 
+            transition-all duration-200
+            ${errors.email 
+              ? 'border-red-500 focus:ring-red-500/30' 
+              : 'border-slate-800 focus:border-cyan-400 focus:ring-cyan-500/30'
+            }
+          `}
+          disabled={isLoading}
+        />
+        {errors.email && (
+          <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
+            <AlertCircle className="w-3 h-3" />
+            {errors.email}
+          </p>
+        )}
+      </div>
+
+      <div className="form-anim pt-1">
+        <button 
+          type="submit" 
+          disabled={isLoading}
+          className={`
+            w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 
+            hover:from-cyan-500 hover:to-blue-500 text-white font-semibold 
+            rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 
+            text-sm tracking-wide transform active:scale-[0.98]
+            flex items-center justify-center gap-2
+            ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}
+          `}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Sending OTP...
+            </>
+          ) : (
+            'Send OTP'
+          )}
+        </button>
+      </div>
+    </form>
+  );
+
+
+  // Render OTP Step
+  const renderOTPStep = () => (
+    <form onSubmit={handleVerifyOTP} className="space-y-4 otp-section">
+      <div className="text-center space-y-1 form-anim">
+        <p className="text-xs text-slate-400">
+          Enter the 6-digit code sent to
+        </p>
+        <p className="text-sm font-medium text-cyan-400">{email}</p>
+        <div className="resend-success opacity-0 flex items-center justify-center gap-1 text-xs text-green-400">
+          <CheckCircle className="w-3 h-3" />
+          <span>OTP resent successfully!</span>
+        </div>
+      </div>
+
+      <div className="space-y-3 form-anim">
+        <div className="flex justify-center gap-2">
+          {otp.map((digit, index) => (
+            <input
+              key={index}
+              id={`otp-${index}`}
+              type="text"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleOtpChange(index, e.target.value)}
+              onKeyDown={(e) => handleOtpKeyDown(index, e)}
+              className={`
+                w-10 h-12 text-center text-lg font-bold rounded-xl border-2
+                transition-all duration-300 focus:outline-none focus:ring-2 
+                bg-[#020818]/90 text-slate-100
+                ${errors.otp 
+                  ? 'border-red-500 focus:ring-red-500/30' 
+                  : 'border-slate-800 focus:border-cyan-400 focus:ring-cyan-500/30'
+                }
+                ${digit ? 'border-cyan-400 bg-cyan-950/30' : ''}
+              `}
+              disabled={isLoading}
+            />
+          ))}
+        </div>
+        {errors.otp && (
+          <p className="text-xs text-red-400 text-center flex items-center justify-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            {errors.otp}
+          </p>
+        )}
+      </div>
+
+      <button 
+        type="submit" 
+        disabled={isLoading}
+        className={`
+          w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 
+          hover:from-cyan-500 hover:to-blue-500 text-white font-semibold 
+          rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 
+          text-sm tracking-wide transform active:scale-[0.98]
+          flex items-center justify-center gap-2 form-anim
+          ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}
+        `}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Verifying OTP...
+          </>
+        ) : (
+          'Verify OTP'
+        )}
+      </button>
+
+      <div className="text-center space-y-1 form-anim">
+        <p className="text-xs text-slate-400">
+          Didn't receive code?{' '}
+          <button
+            type="button"
+            onClick={handleResendOTP}
+            disabled={isResendDisabled || isLoading}
+            className={`
+              font-medium transition-colors
+              ${isResendDisabled || isLoading
+                ? 'text-slate-600 cursor-not-allowed'
+                : 'text-cyan-400 hover:text-cyan-300'
+              }
+            `}
+          >
+            Resend {isResendDisabled && `(${otpTimer}s)`}
+          </button>
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setStep(1);
+            setErrors({});
+          }}
+          className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1"
+        >
+          <ArrowLeft className="w-3 h-3" />
+          Change Email
+        </button>
+      </div>
+    </form>
+  );
+
+  // Render Password Step
+  const renderPasswordStep = () => {
+    const getPasswordStrength = () => {
+      let strength = 0;
+      if (newPassword.length >= 8) strength += 1;
+      if (newPassword.match(/[a-z]+/)) strength += 1;
+      if (newPassword.match(/[A-Z]+/)) strength += 1;
+      if (newPassword.match(/[0-9]+/)) strength += 1;
+      if (newPassword.match(/[$@#&!]+/)) strength += 1;
+      return strength;
+    };
+
+    const strength = getPasswordStrength();
+    const getStrengthColor = () => {
+      if (strength <= 2) return 'bg-red-500';
+      if (strength <= 3) return 'bg-yellow-500';
+      return 'bg-green-500';
+    };
+
+    const getStrengthText = () => {
+      if (strength <= 2) return 'Weak';
+      if (strength <= 3) return 'Medium';
+      return 'Strong';
+    };
+
+    return (
+      <form onSubmit={handleResetPassword} className="space-y-4 password-section">
+        <div className="form-anim space-y-1">
+          <label className="text-xs font-medium text-slate-300">New Password</label>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={newPassword}
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                setErrors({});
+              }}
+              className={`
+                w-full px-3 py-2.5 pr-10 bg-[#020818]/90 border rounded-xl 
+                text-slate-100 placeholder-slate-500 text-sm focus:outline-none 
+                focus:ring-2 transition-all duration-200
+                ${errors.newPassword 
+                  ? 'border-red-500 focus:ring-red-500/30' 
+                  : 'border-slate-800 focus:border-cyan-400 focus:ring-cyan-500/30'
+                }
+              `}
+              placeholder="Create a strong password"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Password Strength Indicator */}
+          {newPassword && (
+            <div className="space-y-1 mt-2">
+              <div className="flex gap-1 h-1">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <div
+                    key={level}
+                    className={`
+                      flex-1 rounded-full transition-all duration-300
+                      ${level <= strength ? getStrengthColor() : 'bg-slate-700'}
+                    `}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <p className="text-xs text-slate-400">{getStrengthText()}</p>
+                <p className="text-xs text-slate-500">{newPassword.length}/8+</p>
+              </div>
+            </div>
+          )}
+          {errors.newPassword && (
+            <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.newPassword}
+            </p>
+          )}
+        </div>
+
+        <div className="form-anim space-y-1">
+          <label className="text-xs font-medium text-slate-300">Confirm Password</label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setErrors({});
+              }}
+              className={`
+                w-full px-3 py-2.5 pr-10 bg-[#020818]/90 border rounded-xl 
+                text-slate-100 placeholder-slate-500 text-sm focus:outline-none 
+                focus:ring-2 transition-all duration-200
+                ${errors.confirmPassword 
+                  ? 'border-red-500 focus:ring-red-500/30' 
+                  : 'border-slate-800 focus:border-cyan-400 focus:ring-cyan-500/30'
+                }
+              `}
+              placeholder="Confirm your new password"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.confirmPassword && (
+            <p className="text-xs text-red-400 flex items-center gap-1 mt-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.confirmPassword}
+            </p>
+          )}
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={isLoading}
+          className={`
+            w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 
+            hover:from-cyan-500 hover:to-blue-500 text-white font-semibold 
+            rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 
+            text-sm tracking-wide transform active:scale-[0.98]
+            flex items-center justify-center gap-2 form-anim
+            ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}
+          `}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Resetting Password...
+            </>
+          ) : (
+            'Reset Password'
+          )}
+        </button>
+      </form>
+    );
+  };
+
+  // Render Success
+  const renderSuccess = () => (
+    <div className="text-center py-6 space-y-4 success-anim">
+      <div className="relative w-20 h-20 mx-auto">
+        <div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping" />
+        <div className="relative w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+          <CheckCircle className="w-10 h-10 text-white" />
+        </div>
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-white mb-1">
+          Password Reset Successfully!
+        </h3>
+        <p className="text-xs text-slate-400">
+          Your password has been reset. You can now login with your new password.
+        </p>
+      </div>
+      <button
+        onClick={() => navigate('/signin')}
+        className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 text-sm transform active:scale-[0.98]"
+      >
+        Go to Login
+      </button>
+    </div>
+  );
 
   return (
     <div 
@@ -169,50 +787,40 @@ const ForgotPassword = () => {
             Forgot <span className="text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">Password</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Enter your registered email to reset your password.
+            {step === 1 && 'Enter your email to receive a verification code'}
+            {step === 2 && 'Enter the 6-digit code sent to your email'}
+            {step === 3 && 'Create a strong password for your account'}
           </p>
         </div>
 
-        {!isSubmitted ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="form-anim space-y-1">
-              <label className="text-xs font-medium text-slate-300">Email Address</label>
-              <input 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder="name@example.com" 
-                required
-                className="w-full px-3 py-2.5 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
-              />
-            </div>
+        {/* Step Indicator */}
+        {!isSuccess && step > 1 && renderStepIndicator()}
 
-            <div className="form-anim pt-1">
-              <button 
-                type="submit" 
-                className="w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 text-sm tracking-wide transform active:scale-[0.98]"
-              >
-                Send Reset Link
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="text-center py-4 space-y-3 form-anim">
-            <div className="text-cyan-400 text-3xl">✉️</div>
-            <p className="text-sm text-slate-300">
-              If an account exists with <span className="text-cyan-400 font-medium">{email}</span>, you will receive a password reset link shortly.
+        {/* Content */}
+        <div className="relative">
+          {!isSuccess ? (
+            <>
+              {step === 1 && renderEmailStep()}
+              {step === 2 && renderOTPStep()}
+              {step === 3 && renderPasswordStep()}
+            </>
+          ) : (
+            renderSuccess()
+          )}
+        </div>
+
+        {/* Footer Links */}
+        {!isSuccess && (
+          <div className="text-center mt-5 form-anim">
+            <p className="text-xs text-slate-400">
+              {step === 1 ? 'Remembered your password?' : 'Changed your mind?'}
+              {' '}
+              <Link to="/signin" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
+                Back to Log In
+              </Link>
             </p>
           </div>
         )}
-
-        <div className="text-center mt-5 form-anim">
-          <p className="text-xs text-slate-400">
-            Remembered your password?{' '}
-            <Link to="/signin" className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors">
-              Back to Log In
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );

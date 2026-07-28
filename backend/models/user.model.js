@@ -30,7 +30,23 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ["admin", "user", "deliveryboy"],
-      required: true
+      required: true,
+    },
+
+    // OTP Fields
+    resetOtp: {
+      type: String,
+      default: null,
+    },
+
+    isOtpVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    resetOtpExpire: {
+      type: Date,
+      default: null,
     },
   },
   {
