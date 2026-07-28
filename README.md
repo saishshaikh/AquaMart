@@ -50,6 +50,9 @@ Error   Validate  │                    ▼        Invalid   Reset Password
 
 
 
+
+
+
 ## 🔐 Signup Page
 
 A fully animated Authentication Page built with **React, Tailwind CSS, and GSAP**. Users can register and login using their personal information or **Google Authentication**. The system supports three roles: **User, Admin, and Delivery Boy**, with a modern responsive UI, smooth animations, and interactive effects.
