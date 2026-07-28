@@ -40,7 +40,7 @@ AUTHENTICATION
 
 ...
 
-
+## SCREENSHOTS
    ## 🔐 Signup Page
 
 A fully animated registration page with role selection and smooth transitions.
