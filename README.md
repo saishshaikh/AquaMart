@@ -40,3 +40,8 @@
             ▼
      Signup Successful
 ```
+
+  SIGNUP  PAGE
+
+  
+<img width="1913" height="898" alt="image" src="https://github.com/user-attachments/assets/fca56b61-dc22-487a-8c00-8c3f483f96e1" />
