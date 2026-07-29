@@ -2,8 +2,10 @@ import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import axios from "axios";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth } from '../firebase';
 
 gsap.registerPlugin(useGSAP);
 
@@ -11,6 +13,7 @@ const SignIn = () => {
   const containerRef = useRef(null);
   const cardRef = useRef(null);
   const introFishRef = useRef(null);
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -19,6 +22,7 @@ const SignIn = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [ripple, setRipple] = useState(null);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,11 +44,50 @@ const SignIn = () => {
 
       console.log(result.data);
       alert("Login Successful!");
+      navigate("/");
     } catch (error) {
       console.error("SignIn fetch error:", error.response?.data || error.message);
       alert(error.response?.data?.message || "Login failed. Please check your credentials.");
     }
   };
+
+  // Handle Google Auth
+ const GoogleSignin = async () => {
+  setError("");
+
+  try {
+    const provider = new GoogleAuthProvider();
+
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    console.log("Google User:", user);
+
+    const response = await axios.post(
+  `${serverUrl}/api/auth/google`,
+  {
+    fullName: user.displayName,
+    email: user.email,
+  },
+  {
+    withCredentials: true,
+  }
+);
+
+    console.log("Login Success:", response.data);
+
+    navigate("/");
+
+  } catch (error) {
+    console.error(
+      "Google signin failed:",
+      error.response?.data || error.message
+    );
+
+    setError("Google signin failed");
+  }
+};
+  
 
   const handleRippleEffect = (e) => {
     const rect = containerRef.current.getBoundingClientRect();
@@ -58,11 +101,6 @@ const SignIn = () => {
     e.preventDefault();
     console.log("Sign In Submitted:", formData);
     await handleSignIn();
-  };
-
-  const handleGoogleAuth = () => {
-    console.log("Google Authentication Triggered");
-    alert("Redirecting to Google Authentication...");
   };
 
   useGSAP(() => {
@@ -255,7 +293,7 @@ const SignIn = () => {
         <div className="form-anim">
           <button 
             type="button"
-            onClick={handleGoogleAuth}
+            onClick={GoogleSignin}
             className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-[#020818]/90 hover:bg-[#07132d] border border-cyan-900/50 hover:border-cyan-500/50 rounded-xl text-slate-200 font-medium transition-all duration-300 text-sm group shadow-md shadow-black/40"
           >
             <svg className="w-4 h-4 transition-transform group-hover:scale-110" viewBox="0 0 24 24">

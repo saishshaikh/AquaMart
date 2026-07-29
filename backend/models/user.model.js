@@ -20,12 +20,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       minlength: 6,
     },
-
-    mobile: {
-      type: String,
-      required: true,
-      unique: true,
-    },
+mobile: {
+  type: String,
+  unique: true,
+  sparse: true,
+},
 
     role: {
       type: String,

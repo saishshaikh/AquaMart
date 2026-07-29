@@ -129,7 +129,7 @@ const GoogleAuth = async () => {
   }
 
   setIsLoading(true);
-  setError('');
+  setError("");
 
   try {
     const provider = new GoogleAuthProvider();
@@ -137,17 +137,13 @@ const GoogleAuth = async () => {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
-    console.log("Google User:", {
-      name: user.displayName,
-      email: user.email
-    });
+    console.log("Google User:", user);
 
-    const response = await axios.post(
+    const { data } = await axios.post(
       `${serverUrl}/api/auth/google`,
       {
         fullName: user.displayName,
         email: user.email,
-        photo: user.photoURL,
         mobile: formData.mobile,
       },
       {
@@ -155,19 +151,11 @@ const GoogleAuth = async () => {
       }
     );
 
-    console.log("Google Auth Success:", response.data);
-
-    alert("Google authentication successful!");
-    navigate('/');
+    console.log(data);
+    navigate("/");
 
   } catch (error) {
-    console.error("Google Auth Error:", error);
-    setError(
-      error.response?.data?.message ||
-      "Google authentication failed. Please try again."
-    );
-  } finally {
-    setIsLoading(false);
+    console.error("Google authentication failed.", error);
   }
 };
 

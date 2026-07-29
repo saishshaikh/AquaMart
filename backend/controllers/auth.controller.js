@@ -4,8 +4,9 @@
 
 import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
-import GenerateToken from "../utils/token.js";
+import GenerateToken from "../utils/token.js"; 
 import { SendOtpMail } from "../utils/sendOtpMail.js";
+import jwt from "jsonwebtoken";
 
 // ============================================
 // SECTION 1: AUTHENTICATION (Signup, Signin, Signout)
@@ -60,7 +61,7 @@ const signup = async (req, res) => {
         // Set cookie
         res.cookie("token", token, {
             secure: process.env.NODE_ENV === 'production',
-            sameSite: "strict",
+            sameSite: "lax", // ✅ "strict" ki jagah "lax" better hai
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             httpOnly: true,
         });
@@ -74,7 +75,8 @@ const signup = async (req, res) => {
                 email: user.email,
                 mobile: user.mobile,
                 role: user.role
-            }
+            },
+            token // ✅ Frontend ke liye
         });
 
     } catch (error) {
@@ -95,52 +97,62 @@ const signin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find user
+        // Validate input
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
+            });
+        }
+
+        // User find karo
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message: "Invalid credentials"
             });
         }
 
-        // Verify password
+        // Password verify karo
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid email or password"
+                message: "Invalid credentials"
             });
         }
 
-        // Generate JWT token
+        // ✅ Token generate karo
         const token = GenerateToken(user._id);
+        console.log("✅ Token generated for user:", user.email);
 
-        // Set cookie
-        res.cookie("token", token, {
+        // ✅ Cookie mein set karo
+        res.cookie('token', token, {
             httpOnly: true,
-            sameSite: "strict",
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: "Login successful",
             user: {
                 id: user._id,
-                fullName: user.fullName,
+                fullName: user.fullName, // ✅ FIXED: "fullName" use karo
                 email: user.email,
                 mobile: user.mobile,
                 role: user.role
-            }
+            },
+            token // Frontend ke liye
         });
 
     } catch (error) {
-        console.error("Signin Error:", error);
-        return res.status(500).json({
+        console.error("❌ Signin error:", error);
+        res.status(500).json({
             success: false,
-            message: "Signin failed: " + error.message,
+            message: "Internal server error"
         });
     }
 };
@@ -167,7 +179,7 @@ const signout = async (req, res) => {
 };
 
 // ============================================
-// SECTION 2: PASSWORD RESET FLOW (Send OTP, Verify OTP, Reset Password)
+// SECTION 2: PASSWORD RESET FLOW
 // ============================================
 
 /**
@@ -179,7 +191,6 @@ const sendOtp = async (req, res) => {
     try {
         const { email } = req.body;
 
-        // Validate email
         if (!email) {
             return res.status(400).json({
                 success: false,
@@ -187,7 +198,6 @@ const sendOtp = async (req, res) => {
             });
         }
 
-        // Find user
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({
@@ -196,16 +206,13 @@ const sendOtp = async (req, res) => {
             });
         }
 
-        // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Save OTP and expiry in user document (matching model fields)
         user.resetOtp = otp;
-        user.resetOtpExpire = Date.now() + 5 * 60 * 1000; // 5 minutes
+        user.resetOtpExpire = Date.now() + 5 * 60 * 1000;
         user.isOtpVerified = false;
         await user.save();
 
-        // Send email with OTP
         await SendOtpMail(user.email, otp);
 
         return res.status(200).json({
@@ -231,7 +238,6 @@ const verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
 
-        // Validate input
         if (!email || !otp) {
             return res.status(400).json({
                 success: false,
@@ -239,7 +245,6 @@ const verifyOtp = async (req, res) => {
             });
         }
 
-        // Find user
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({
@@ -248,7 +253,6 @@ const verifyOtp = async (req, res) => {
             });
         }
 
-        // Check if OTP exists
         if (!user.resetOtp) {
             return res.status(400).json({
                 success: false,
@@ -256,21 +260,18 @@ const verifyOtp = async (req, res) => {
             });
         }
 
-        // Check if OTP is expired
         if (user.resetOtpExpire < Date.now()) {
-            // Clear expired OTP
             user.resetOtp = null;
             user.resetOtpExpire = null;
             user.isOtpVerified = false;
             await user.save();
-            
+
             return res.status(400).json({
                 success: false,
                 message: "OTP has expired. Please request a new one."
             });
         }
 
-        // Check if OTP matches
         if (user.resetOtp !== otp) {
             return res.status(400).json({
                 success: false,
@@ -278,7 +279,6 @@ const verifyOtp = async (req, res) => {
             });
         }
 
-        // OTP verified successfully
         user.isOtpVerified = true;
         await user.save();
 
@@ -301,65 +301,115 @@ const verifyOtp = async (req, res) => {
  * @route   POST /api/auth/reset-password
  * @access  Public
  */
-
 const resetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and new password are required",
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters",
+            });
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        if (!user.isOtpVerified) {
+            return res.status(400).json({
+                success: false,
+                message: "Please verify OTP first",
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+        user.resetOtp = null;
+        user.resetOtpExpire = null;
+        user.isOtpVerified = false;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successfully",
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+// ============================================
+// SECTION 3: GOOGLE AUTH
+// ============================================
+const googleAuth = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
+    const { fullName, email } = req.body;
 
-    // Validate input
-    if (!email || !newPassword) {
+    if (!fullName || !email) {
       return res.status(400).json({
         success: false,
-        message: "Email and new password are required",
+        message: "Name and email are required.",
       });
     }
 
-    // Password validation
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters",
-      });
-    }
-
-    // Find user
-    const user = await User.findOne({ email });
+    let user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
+      user = await User.create({
+        fullName,
+        email,
+        role: "user",
+        isGoogleUser: true,
       });
     }
 
-    // OTP verified?
-    if (!user.isOtpVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Please verify OTP first",
-      });
-    }
+    console.log("✅ Google User:", user.email);
+    console.log("✅ User ID:", user._id);
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const token = GenerateToken(user._id);
 
-    // Save new password
-    user.password = hashedPassword;
+    console.log("✅ Generated Token:", token);
 
-    // Clear OTP
-    user.resetOtp = null;
-    user.resetOtpExpire = null;
-    user.isOtpVerified = false;
-
-    await user.save();
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false, // localhost
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     return res.status(200).json({
       success: true,
-      message: "Password reset successfully",
+      message: "Google login successful",
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role,
+      },
     });
-
   } catch (error) {
-    console.log(error);
+    console.error("Google Auth Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -367,18 +417,16 @@ const resetPassword = async (req, res) => {
     });
   }
 };
-
 // ============================================
-// SECTION 3: EXPORT CONTROLLERS
+// SECTION 4: EXPORT CONTROLLERS
 // ============================================
 
 export {
-    // Authentication
     signup,
     signin,
     signout,
-    // Password Reset Flow
     sendOtp,
     verifyOtp,
-    resetPassword
+    resetPassword,
+    googleAuth
 };
