@@ -4,41 +4,33 @@ import { serverUrl } from "../App";
 
 const useGetCurrentUser = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+
+  const getCurrentUser = async () => {
+    console.log("🚀 Calling Current User API...");
+
+    try {
+      const res = await axios.get(
+        `${serverUrl}/api/user/current`,
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log("✅ Current User:", res.data.user);
+
+      setUser(res.data.user);
+    } catch (error) {
+      console.log("❌ Error:", error.response?.status);
+      console.log(error.response?.data || error.message);
+    }
+  };
 
   useEffect(() => {
-    const getCurrentUser = async () => {
-      try {
-        console.log("🔍 Calling current user API...");
-
-        const res = await axios.get(
-          `${serverUrl}/api/user/current`,
-          {
-            withCredentials: true,
-          }
-        );
-
-        console.log("📦 API Response:", res.data);
-
-        if (res.data.success) {
-          console.log("👤 Current User:", res.data.user);
-          setUser(res.data.user);
-        }
-
-      } catch (error) {
-        console.log(
-          "❌ Get User Error:",
-          error.response?.data || error.message
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    console.log("✅ Hook Executed");
     getCurrentUser();
   }, []);
 
-  return { user, loading };
+  return { user };
 };
 
-export default useGetCurrentUser;
+export default useGetCurrentUser;   

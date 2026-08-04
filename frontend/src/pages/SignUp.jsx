@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import axios from "axios";
@@ -6,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../firebase.js";
+import { setUserData } from '../redux/userSlice.js';
 
 gsap.registerPlugin(useGSAP);
 
@@ -14,7 +16,7 @@ const SignUp = () => {
   const cardRef = useRef(null);
   const introFishRef = useRef(null);
   const navigate = useNavigate();
-
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     role: 'user',
     fullName: '',
@@ -103,7 +105,8 @@ const SignUp = () => {
           withCredentials: true,
         }
       );
-
+      
+      dispatch(setUserData(result.data));
       console.log("SignUp Success:", result.data);
       alert("Account created successfully! Please login.");
       navigate('/signin'); // Redirect to login page
@@ -117,47 +120,50 @@ const SignUp = () => {
   };
 
   // Handle Google Auth
-const GoogleAuth = async () => {
-  if (!formData.mobile) {
-    setError("Please enter mobile number first.");
-    return;
-  }
+  const GoogleAuth = async () => {
+    if (!formData.mobile) {
+      setError("Please enter mobile number first.");
+      return;
+    }
 
-  if (formData.mobile.length !== 10) {
-    setError("Please enter a valid 10 digit mobile number.");
-    return;
-  }
+    if (formData.mobile.length !== 10) {
+      setError("Please enter a valid 10 digit mobile number.");
+      return;
+    }
 
-  setIsLoading(true);
-  setError("");
+    setIsLoading(true);
+    setError("");
 
-  try {
-    const provider = new GoogleAuthProvider();
+    try {
+      const provider = new GoogleAuthProvider();
 
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-    console.log("Google User:", user);
+      console.log("Google User:", user);
 
-    const { data } = await axios.post(
-      `${serverUrl}/api/auth/google`,
-      {
-        fullName: user.displayName,
-        email: user.email,
-        mobile: formData.mobile,
-      },
-      {
-        withCredentials: true,
-      }
-    );
+      const { data } = await axios.post(
+        `${serverUrl}/api/auth/google`,
+        {
+          fullName: user.displayName,
+          email: user.email,
+          mobile: formData.mobile,
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
-    console.log(data);
-    navigate("/");
+dispatch(setUserData(data.user));
+      navigate("/home");
 
-  } catch (error) {
-    console.error("Google authentication failed.", error);
-  }
-};
+    } catch (error) {
+      console.error("Google authentication failed.", error);
+      setError(error.response?.data?.message || "Google authentication failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useGSAP(() => {
     const tl = gsap.timeline();

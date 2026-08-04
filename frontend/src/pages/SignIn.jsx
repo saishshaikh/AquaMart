@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useDispatch } from 'react-redux'; // ✅ Add this
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import axios from "axios";
@@ -6,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebase';
+import { setUserData } from '../redux/userSlice.js'; // ✅ Add this
 
 gsap.registerPlugin(useGSAP);
 
@@ -14,6 +16,7 @@ const SignIn = () => {
   const cardRef = useRef(null);
   const introFishRef = useRef(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch(); // ✅ Add dispatch
 
   const [formData, setFormData] = useState({
     email: '',
@@ -23,13 +26,18 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [ripple, setRipple] = useState(null);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // ✅ Add loading state
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setError(''); // ✅ Clear error on change
   };
 
   const handleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+
     try {
       const result = await axios.post(
         `${serverUrl}/api/auth/signin`,
@@ -42,52 +50,55 @@ const SignIn = () => {
         }
       );
 
-      console.log(result.data);
-      alert("Login Successful!");
+      // ✅ Dispatch user data to Redux
+      dispatch(setUserData(result.data));
+      
+      console.log("Login Success:", result.data);
       navigate("/");
+      
     } catch (error) {
-      console.error("SignIn fetch error:", error.response?.data || error.message);
-      alert(error.response?.data?.message || "Login failed. Please check your credentials.");
+      console.error("SignIn Error:", error.response?.data || error.message);
+      setError(error.response?.data?.message || "Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Handle Google Auth
- const GoogleSignin = async () => {
-  setError("");
+  const GoogleSignin = async () => {
+    setError("");
+    setIsLoading(true);
 
-  try {
-    const provider = new GoogleAuthProvider();
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
+      console.log("Google User:", user);
 
-    console.log("Google User:", user);
+      const response = await axios.post(
+        `${serverUrl}/api/auth/google`,
+        {
+          fullName: user.displayName,
+          email: user.email,
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
-    const response = await axios.post(
-  `${serverUrl}/api/auth/google`,
-  {
-    fullName: user.displayName,
-    email: user.email,
-  },
-  {
-    withCredentials: true,
-  }
-);
+      // ✅ Dispatch user data to Redux
+dispatch(setUserData(response.data.user));      
+      console.log("Login Success:", response.data);
+      navigate("/home"); // ✅ Home page par jao
 
-    console.log("Login Success:", response.data);
-
-    navigate("/");
-
-  } catch (error) {
-    console.error(
-      "Google signin failed:",
-      error.response?.data || error.message
-    );
-
-    setError("Google signin failed");
-  }
-};
-  
+    } catch (error) {
+      console.error("Google signin failed:", error.response?.data || error.message);
+      setError(error.response?.data?.message || "Google signin failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleRippleEffect = (e) => {
     const rect = containerRef.current.getBoundingClientRect();
@@ -99,7 +110,25 @@ const SignIn = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Sign In Submitted:", formData);
+    
+    // ✅ Validation
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    if (!formData.password) {
+      setError('Password is required');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     await handleSignIn();
   };
 
@@ -237,12 +266,24 @@ const SignIn = () => {
           </p>
         </div>
 
+        {/* ✅ Error Message Display */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm form-anim">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-3">
           
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Email Address</label>
             <input 
-              type="email" name="email" value={formData.email} onChange={handleChange} placeholder="name@example.com" required
+              type="email" 
+              name="email" 
+              value={formData.email} 
+              onChange={handleChange} 
+              placeholder="name@example.com" 
+              required
               className="w-full px-3 py-2 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
             />
           </div>
@@ -257,11 +298,17 @@ const SignIn = () => {
             
             <div className="relative">
               <input 
-                type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} placeholder="Enter your password" required
+                type={showPassword ? 'text' : 'password'} 
+                name="password" 
+                value={formData.password} 
+                onChange={handleChange} 
+                placeholder="Enter your password" 
+                required
                 className="w-full px-3 py-2 pr-10 bg-[#020818]/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all duration-200"
               />
               <button 
-                type="button" onClick={() => setShowPassword(!showPassword)}
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs focus:outline-none"
               >
                 {showPassword ? 'Hide' : 'Show'}
@@ -272,9 +319,19 @@ const SignIn = () => {
           <div className="form-anim pt-1">
             <button 
               type="submit" 
-              className="w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 text-sm tracking-wide transform active:scale-[0.98]"
+              disabled={isLoading}
+              className={`w-full py-2.5 px-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-600/40 transition-all duration-200 text-sm tracking-wide transform active:scale-[0.98] flex items-center justify-center gap-2 ${
+                isLoading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              Log In
+              {isLoading ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Logging in...
+                </>
+              ) : (
+                'Log In'
+              )}
             </button>
           </div>
         </form>
@@ -294,7 +351,10 @@ const SignIn = () => {
           <button 
             type="button"
             onClick={GoogleSignin}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-[#020818]/90 hover:bg-[#07132d] border border-cyan-900/50 hover:border-cyan-500/50 rounded-xl text-slate-200 font-medium transition-all duration-300 text-sm group shadow-md shadow-black/40"
+            disabled={isLoading}
+            className={`w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-[#020818]/90 hover:bg-[#07132d] border border-cyan-900/50 hover:border-cyan-500/50 rounded-xl text-slate-200 font-medium transition-all duration-300 text-sm group shadow-md shadow-black/40 ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
             <svg className="w-4 h-4 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
