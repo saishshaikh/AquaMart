@@ -1,84 +1,69 @@
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import axios from "axios";
-
-import { serverUrl } from "../App";
-import { setUserData } from "../redux/userSlice";
+import React, { useEffect } from 'react'
+import { serverUrl } from '../App'
+import { useDispatch, useSelector } from 'react-redux'
+import { setCity } from '../redux/userSlice'
+import axios from 'axios'
 
 function useGetCity() {
-  const dispatch = useDispatch();
-  const { userData } = useSelector((state) => state.user);
+    const dispatch = useDispatch()
+    const { city } = useSelector((state) => state.user)
+    const apiKey = import.meta.env.VITE_GEOAPIKEY
 
-  const apiKey = import.meta.env.VITE_GEOAPIKEY;
+    useEffect(() => {
+        if (city) return
+        if (!navigator.geolocation) return
 
-  useEffect(() => {
-    console.log("Checking user:", userData);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            try {
+                const latitude = position.coords.latitude
+                const longitude = position.coords.longitude
 
-    // User login check
-    if (!userData?.id && !userData?._id) {
-      console.log("User not logged in");
-      return;
-    }
+                // Geoapify Reverse Geocoding API
+                const result = await axios.get(
+                    `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`
+                )
 
-    // City already saved
-    if (userData?.city) {
-      console.log("City already exists:", userData.city);
-      return;
-    }
+                const location = result.data.results[0]
+                console.log("Geoapify Full Response:", location)
 
-    if (!navigator.geolocation) {
-      console.log("Geolocation is not supported");
-      return;
-    }
+                // Exact location ke liye fields check karein
+                let exactLocation = 
+                    location.suburb || 
+                    location.hamlet || 
+                    location.village || 
+                    location.town || 
+                    location.city || 
+                    location.county ||
+                    location.district
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
+                // Agar Geoapify me Thane ya district aaye, toh agar location data me koi aur choti jagah ho toh woh lein, 
+                // ya agar aapko manually Bhiwandi set karna hai jab aap wahan ho:
+                if (exactLocation && exactLocation.includes("Thane")) {
+                    // Agar aap chahte hain ki Geoapify ke 'Thane' ko aap override karke Bhiwandi karein:
+                    exactLocation = "Bhiwandi" 
+                }
 
-          console.log("Latitude:", latitude);
-          console.log("Longitude:", longitude);
+                if (exactLocation) {
+                    dispatch(setCity(exactLocation))
+                    console.log("Detected Location with Geoapify:", exactLocation)
 
-          const { data } = await axios.get(
-            `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`
-          );
-
-          const location = data.results[0];
-
-          const city =
-            location.city ||
-            location.town ||
-            location.village ||
-            location.suburb ||
-            location.county;
-
-          console.log("Detected City:", city);
-
-          const response = await axios.post(
-            `${serverUrl}/api/user/update-city`,
-            { city },
-            {
-              withCredentials: true,
+                    // Backend par update karein
+                    try {
+                        await axios.post(
+                            `${serverUrl}/api/user/update-city`,
+                            { city: exactLocation },
+                            { withCredentials: true }
+                        )
+                        console.log("✅ Location updated on backend")
+                    } catch (err) {
+                        console.log("❌ Backend update error:", err.response?.data || err.message)
+                    }
+                }
+            } catch (error) {
+                console.log("Error getting location:", error)
             }
-          );
-
-          console.log("Backend Response:", response.data);
-
-          if (response.data.success) {
-            dispatch(setUserData(response.data.user));
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      },
-      (error) => {
-        console.log("Location Error:", error.message);
-      }
-    );
-  }, [userData?.id, userData?._id, userData?.city]);
-
-  return null;
+        })
+    }, [dispatch, city])
 }
 
-export default useGetCity;
+export default useGetCity

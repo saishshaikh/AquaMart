@@ -1,10 +1,15 @@
+import React, { useEffect, useRef, useState } from 'react';
 import { Bell, ShoppingCart, Search, User, LogOut, MapPin, Menu, X, Home } from "lucide-react";
-import { useSelector } from "react-redux";
-import { useEffect, useRef, useState } from "react";
+import { useSelector, useDispatch } from "react-redux"; // 👈 useDispatch import karna zaroori hai
 import gsap from "gsap";
+import axios from "axios"; // 👈 axios import karna zaroori hai
 
-import useGetCity from "../hooks/useGetCity";function Nav1() {
-  const { userData } = useSelector((state) => state.user);
+import useGetCity from "../hooks/useGetCurrentUser";
+import { setUserData } from '../redux/userSlice';
+import { serverUrl } from '../App'; // 👈 serverUrl import karna zaroori hai
+
+function Nav1() {
+  const { userData, city } = useSelector((state) => state.user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cityLoading, setCityLoading] = useState(true);
   
@@ -17,16 +22,28 @@ import useGetCity from "../hooks/useGetCity";function Nav1() {
   const logoutRef = useRef(null);
   const locationRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  
+  const dispatch = useDispatch();
+
+  // 🛠️ Fixed Logout Function (Backticks `` used instead of '')
+  const Hndlelogout = async () => {
+    try {
+      await axios.post(`${serverUrl}/api/auth/signout`, { withCredentials: true });
+      dispatch(setUserData(null));
+    } catch (error) {
+      console.log("❌ Logout Error:", error.response?.data || error.message);
+    }
+  };
 
   // Call the custom hook to get city
   useGetCity();
 
-  // Update loading state when userData changes
+  // Update loading state when city or userData.city changes
   useEffect(() => {
-    if (userData?.city) {
+    if (city || userData?.city) {
       setCityLoading(false);
     }
-  }, [userData]);
+  }, [city, userData]);
 
   useEffect(() => {
     // Logo entrance
@@ -106,7 +123,7 @@ import useGetCity from "../hooks/useGetCity";function Nav1() {
           </div>
         </div>
 
-        {/* Location - Dynamic city from userData */}
+        {/* Location - Dynamic city */}
         <div 
           ref={locationRef}
           className="hidden md:flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-gray-200 transition-colors cursor-pointer"
@@ -119,7 +136,7 @@ import useGetCity from "../hooks/useGetCity";function Nav1() {
             </span>
           ) : (
             <span className="text-sm text-gray-700 font-medium">
-              {userData?.city || "Mumbai"}
+              {city || userData?.city || "Mumbai"}
             </span>
           )}
         </div>
@@ -199,9 +216,10 @@ import useGetCity from "../hooks/useGetCity";function Nav1() {
             </div>
           </div>
 
-          {/* Logout */}
+          {/* Logout Button (Fixed onClick placement) */}
           <button 
             ref={logoutRef}
+            onClick={Hndlelogout}
             className="hidden md:flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-full transition-colors duration-200 text-sm font-medium"
           >
             <LogOut size={16} />
@@ -236,7 +254,7 @@ import useGetCity from "../hooks/useGetCity";function Nav1() {
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
               <MapPin size={18} className="text-blue-500" />
               <span className="text-gray-700">
-                {cityLoading ? "Detecting..." : userData?.city || "Mumbai"}
+                {cityLoading ? "Detecting..." : (city || userData?.city || "Mumbai")}
               </span>
             </div>
           </div>
@@ -270,8 +288,11 @@ import useGetCity from "../hooks/useGetCity";function Nav1() {
             </button>
           </div>
 
-          {/* Logout */}
-          <button className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full transition-colors text-sm font-medium">
+          {/* Logout (Mobile) */}
+          <button 
+            onClick={Hndlelogout}
+            className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full transition-colors text-sm font-medium"
+          >
             <LogOut size={16} />
             <span>Logout</span>
           </button>

@@ -20,11 +20,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       minlength: 6,
     },
-mobile: {
-  type: String,
-  unique: true,
-  sparse: true,
-},
+    
+    mobile: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    // 📍 Yahan city field add kar di hai
+    city: {
+      type: String,
+      default: "",
+    },
 
     role: {
       type: String,
