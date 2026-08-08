@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, ShoppingCart, Search, User, LogOut, MapPin, Menu, X, Home } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux"; // 👈 useDispatch import karna zaroori hai
+import { useSelector, useDispatch } from "react-redux";
 import gsap from "gsap";
-import axios from "axios"; // 👈 axios import karna zaroori hai
+import axios from "axios";
 
 import useGetCity from "../hooks/useGetCurrentUser";
 import { setUserData } from '../redux/userSlice';
-import { serverUrl } from '../App'; // 👈 serverUrl import karna zaroori hai
+import { serverUrl } from '../App';
 
 function Nav1() {
   const { userData, city } = useSelector((state) => state.user);
@@ -25,7 +25,10 @@ function Nav1() {
   
   const dispatch = useDispatch();
 
-  // 🛠️ Fixed Logout Function (Backticks `` used instead of '')
+  // Check if user is admin
+  const isAdmin = userData?.role === 'admin';
+
+  // Logout Function
   const Hndlelogout = async () => {
     try {
       await axios.post(`${serverUrl}/api/auth/signout`, { withCredentials: true });
@@ -54,14 +57,16 @@ function Nav1() {
       ease: "back.out(1.7)",
     });
 
-    // Search bar
-    gsap.from(searchRef.current, {
-      y: -20,
-      opacity: 0,
-      duration: 0.8,
-      delay: 0.2,
-      ease: "power3.out",
-    });
+    // Search bar - Only animate if not admin
+    if (!isAdmin) {
+      gsap.from(searchRef.current, {
+        y: -20,
+        opacity: 0,
+        duration: 0.8,
+        delay: 0.2,
+        ease: "power3.out",
+      });
+    }
 
     // Location
     gsap.from(locationRef.current, {
@@ -81,8 +86,13 @@ function Nav1() {
       ease: "back.out(1.7)",
     });
 
-    // Stagger
-    gsap.from([cartRef.current, bellRef.current, userRef.current, logoutRef.current], {
+    // Stagger - Hide cart for admin
+    const elementsToAnimate = [bellRef.current, userRef.current, logoutRef.current];
+    if (!isAdmin) {
+      elementsToAnimate.unshift(cartRef.current);
+    }
+    
+    gsap.from(elementsToAnimate, {
       y: -30,
       opacity: 0,
       duration: 0.6,
@@ -101,7 +111,7 @@ function Nav1() {
       });
     }
 
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isAdmin]);
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
@@ -141,18 +151,20 @@ function Nav1() {
           )}
         </div>
 
-        {/* Search */}
-        <div 
-          ref={searchRef}
-          className="hidden lg:flex items-center bg-gray-100 rounded-full px-4 py-2 w-80 hover:bg-gray-200 transition-colors focus-within:bg-gray-200 focus-within:ring-2 focus-within:ring-blue-400"
-        >
-          <Search size={18} className="text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search fish, prawns..."
-            className="bg-transparent outline-none w-full ml-2 text-gray-700 placeholder:text-gray-400 text-sm"
-          />
-        </div>
+        {/* Search - Hide for admin */}
+        {!isAdmin && (
+          <div 
+            ref={searchRef}
+            className="hidden lg:flex items-center bg-gray-100 rounded-full px-4 py-2 w-80 hover:bg-gray-200 transition-colors focus-within:bg-gray-200 focus-within:ring-2 focus-within:ring-blue-400"
+          >
+            <Search size={18} className="text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search fish, prawns..."
+              className="bg-transparent outline-none w-full ml-2 text-gray-700 placeholder:text-gray-400 text-sm"
+            />
+          </div>
+        )}
 
         {/* Right Section */}
         <div 
@@ -160,24 +172,26 @@ function Nav1() {
           className="flex items-center gap-1.5 sm:gap-2"
         >
 
-          {/* Dashboard */}
+          {/* Dashboard - Show for all users */}
           <div className="hidden md:flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-gray-200 transition-colors cursor-pointer">
             <Home size={16} className="text-blue-500" />
             <span className="text-sm text-gray-700 font-medium hidden xl:inline">Dashboard</span>
           </div>
 
-          {/* Cart */}
-          <button 
-            ref={cartRef}
-            className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <ShoppingCart size={20} className="text-gray-700" />
-            <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-blue-500 text-xs flex items-center justify-center text-white font-medium">
-              2
-            </span>
-          </button>
+          {/* Cart - Hide for admin */}
+          {!isAdmin && (
+            <button 
+              ref={cartRef}
+              className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <ShoppingCart size={20} className="text-gray-700" />
+              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-blue-500 text-xs flex items-center justify-center text-white font-medium">
+                2
+              </span>
+            </button>
+          )}
 
-          {/* Bell */}
+          {/* Bell - Show for all users */}
           <button 
             ref={bellRef}
             className="relative p-2 rounded-full hover:bg-gray-100 transition-colors hidden sm:block"
@@ -216,7 +230,7 @@ function Nav1() {
             </div>
           </div>
 
-          {/* Logout Button (Fixed onClick placement) */}
+          {/* Logout Button - Show for all users */}
           <button 
             ref={logoutRef}
             onClick={Hndlelogout}
@@ -235,15 +249,17 @@ function Nav1() {
           ref={mobileMenuRef}
           className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg p-4"
         >
-          {/* Search */}
-          <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 mb-3">
-            <Search size={18} className="text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search fish..."
-              className="bg-transparent outline-none w-full ml-2 text-gray-700 placeholder:text-gray-400 text-sm"
-            />
-          </div>
+          {/* Search - Hide for admin in mobile menu */}
+          {!isAdmin && (
+            <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 mb-3">
+              <Search size={18} className="text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search fish..."
+                className="bg-transparent outline-none w-full ml-2 text-gray-700 placeholder:text-gray-400 text-sm"
+              />
+            </div>
+          )}
 
           {/* Navigation Links */}
           <div className="space-y-2">
@@ -276,13 +292,15 @@ function Nav1() {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions - Hide cart for admin */}
           <div className="flex gap-2 mb-3">
-            <button className="flex-1 flex items-center justify-center gap-2 bg-gray-100 rounded-full px-4 py-2 text-gray-700 text-sm hover:bg-gray-200 transition-colors">
-              <ShoppingCart size={16} />
-              <span>Cart (2)</span>
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 bg-gray-100 rounded-full px-4 py-2 text-gray-700 text-sm hover:bg-gray-200 transition-colors">
+            {!isAdmin && (
+              <button className="flex-1 flex items-center justify-center gap-2 bg-gray-100 rounded-full px-4 py-2 text-gray-700 text-sm hover:bg-gray-200 transition-colors">
+                <ShoppingCart size={16} />
+                <span>Cart (2)</span>
+              </button>
+            )}
+            <button className={`${!isAdmin ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 bg-gray-100 rounded-full px-4 py-2 text-gray-700 text-sm hover:bg-gray-200 transition-colors`}>
               <Bell size={16} />
               <span>Alerts</span>
             </button>

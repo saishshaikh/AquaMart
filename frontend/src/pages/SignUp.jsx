@@ -17,6 +17,7 @@ const SignUp = () => {
   const introFishRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  
   const [formData, setFormData] = useState({
     role: 'user',
     fullName: '',
@@ -30,7 +31,7 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Advanced Password Strength Checker
+  // Password Strength Checker
   const getPasswordStrength = (pass) => {
     if (!pass) return { label: '', color: 'bg-slate-800', width: '0%' };
     if (pass.length < 6) return { label: 'Weak', color: 'bg-rose-500', width: '33%' };
@@ -43,7 +44,7 @@ const SignUp = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setError(''); // Clear error on change
+    setError('');
   };
 
   const handleRippleEffect = (e) => {
@@ -106,10 +107,10 @@ const SignUp = () => {
         }
       );
       
-      dispatch(setUserData(result.data));
+      dispatch(setUserData(result.data.user));
       console.log("SignUp Success:", result.data);
       alert("Account created successfully! Please login.");
-      navigate('/signin'); // Redirect to login page
+      navigate('/signin');
       
     } catch (error) {
       console.error("SignUp Error:", error.response?.data || error.message);
@@ -136,7 +137,6 @@ const SignUp = () => {
 
     try {
       const provider = new GoogleAuthProvider();
-
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -154,7 +154,7 @@ const SignUp = () => {
         }
       );
 
-dispatch(setUserData(data.user));
+      dispatch(setUserData(data.user));
       navigate("/home");
 
     } catch (error) {
@@ -246,10 +246,14 @@ dispatch(setUserData(data.user));
       `}</style>
 
       {ripple && (
-        <div className="water-ripple z-30" style={{ left: ripple.x, top: ripple.y }} />
+        <div 
+          key={ripple.id}
+          className="water-ripple z-30" 
+          style={{ left: ripple.x, top: ripple.y }} 
+        />
       )}
 
-      {/* --- BACKGROUND ENVIRONMENT --- */}
+      {/* Background Environment */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
         <div className="absolute inset-0 opacity-25 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-400 via-transparent to-transparent animate-pulse" />
 
@@ -275,14 +279,14 @@ dispatch(setUserData(data.user));
         <div className="absolute top-0 right-1/4 w-96 h-[600px] bg-gradient-to-b from-blue-500/10 to-transparent transform skew-x-12 blur-3xl" />
       </div>
 
-      {/* --- INTRO MORPHING FISH --- */}
+      {/* Intro Morphing Fish */}
       <div ref={introFishRef} className="absolute z-50 flex items-center justify-center drop-shadow-[0_0_40px_rgba(6,182,212,0.9)]">
         <svg viewBox="0 0 512 512" fill="currentColor" className="text-cyan-400 w-36 h-36 transform scale-x-[-1] animate-pulse">
-            <path d="M497.9 234.1c-13.3-10.7-31.5-12.7-47-5.1-23.7 11.5-49.9 22.1-77.5 30.6-26.6-21.7-56-42.3-87.3-61.2 38.6-26.9 74.2-59.2 105.1-95.9 10.9-12.9 9.8-31.9-2.5-43.4-12.8-12-32.9-11.4-44.9 1.4-33.1 39.5-71.1 73.9-112.5 101.4C198.8 45.4 153.2 21.6 102.4 8.2 88.4 4.5 73.5 12.3 68.3 26.2c-5.3 14 2.3 29.5 16.1 34.6 44.8 16.7 85 41.2 119.5 73-35.3 21.1-71.8 44.4-108.8 69.3C52.3 189 28.7 172.9 6.2 161.4c-13-6.6-29.1-.9-35.3 12.4-6.2 13.3-.4 29.1 12.9 35.3 25.1 12.7 51.5 29.8 77.9 51.5-30.8 22-61.6 45.2-91.4 69.1-11.9 9.5-14.1 26.5-4.9 38.6 9.2 12.1 26.2 14.3 38.4 5.1 32.8-25.1 66-49.3 98.7-72.3 38.1 21.3 77.7 40.5 117.9 57.2-34.9 25.1-66.7 54.3-94.2 86.8-10.2 11.9-9.1 29.7 2.6 40.1 12.1 10.7 30.3 9.6 40.9-2.5 29.7-34.7 64-66 101.4-93.5 32.7 18.2 63.8 38 92.9 58.7-25.9 7.7-50.6 17.5-73.1 29.3-13.6 7.1-19.1 23.8-12 37.4 7.1 13.6 23.8 19.1 37.4 12 28.9-15 57.6-25.5 85.1-32.1 16.4-3.9 31.9 6.1 36.6 22.4 4.7 16.3 18.9 27.9 36.1 28.8 17.2.9 32.2-10.2 36.2-26.9 13.6-57.8 7.3-119-17-172.1 27.4-8.8 53.6-19.3 77.3-31.2 16.1-8.1 25.3-25.5 21.8-43.1-3.6-17.6-17.2-31.5-34.9-35.8z"/>
+          <path d="M497.9 234.1c-13.3-10.7-31.5-12.7-47-5.1-23.7 11.5-49.9 22.1-77.5 30.6-26.6-21.7-56-42.3-87.3-61.2 38.6-26.9 74.2-59.2 105.1-95.9 10.9-12.9 9.8-31.9-2.5-43.4-12.8-12-32.9-11.4-44.9 1.4-33.1 39.5-71.1 73.9-112.5 101.4C198.8 45.4 153.2 21.6 102.4 8.2 88.4 4.5 73.5 12.3 68.3 26.2c-5.3 14 2.3 29.5 16.1 34.6 44.8 16.7 85 41.2 119.5 73-35.3 21.1-71.8 44.4-108.8 69.3C52.3 189 28.7 172.9 6.2 161.4c-13-6.6-29.1-.9-35.3 12.4-6.2 13.3-.4 29.1 12.9 35.3 25.1 12.7 51.5 29.8 77.9 51.5-30.8 22-61.6 45.2-91.4 69.1-11.9 9.5-14.1 26.5-4.9 38.6 9.2 12.1 26.2 14.3 38.4 5.1 32.8-25.1 66-49.3 98.7-72.3 38.1 21.3 77.7 40.5 117.9 57.2-34.9 25.1-66.7 54.3-94.2 86.8-10.2 11.9-9.1 29.7 2.6 40.1 12.1 10.7 30.3 9.6 40.9-2.5 29.7-34.7 64-66 101.4-93.5 32.7 18.2 63.8 38 92.9 58.7-25.9 7.7-50.6 17.5-73.1 29.3-13.6 7.1-19.1 23.8-12 37.4 7.1 13.6 23.8 19.1 37.4 12 28.9-15 57.6-25.5 85.1-32.1 16.4-3.9 31.9 6.1 36.6 22.4 4.7 16.3 18.9 27.9 36.1 28.8 17.2.9 32.2-10.2 36.2-26.9 13.6-57.8 7.3-119-17-172.1 27.4-8.8 53.6-19.3 77.3-31.2 16.1-8.1 25.3-25.5 21.8-43.1-3.6-17.6-17.2-31.5-34.9-35.8z"/>
         </svg>
       </div>
 
-      {/* --- FORM CONTAINER --- */}
+      {/* Form Container */}
       <div 
         ref={cardRef}
         className="relative z-20 w-full max-w-md p-6 sm:p-7 bg-[#040e24]/90 backdrop-blur-3xl border border-cyan-500/40 rounded-3xl shadow-[0_0_60px_rgba(6,182,212,0.25)] text-slate-100"
@@ -307,7 +311,7 @@ dispatch(setUserData(data.user));
         )}
 
         <form onSubmit={HandleSignUp} className="space-y-3">
-          
+          {/* Account Type */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300 flex justify-between">
               <span>Account Type</span>
@@ -331,6 +335,7 @@ dispatch(setUserData(data.user));
             </div>
           </div>
 
+          {/* Full Name */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Full Name</label>
             <input 
@@ -344,6 +349,7 @@ dispatch(setUserData(data.user));
             />
           </div>
 
+          {/* Email */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Email Address</label>
             <input 
@@ -357,6 +363,7 @@ dispatch(setUserData(data.user));
             />
           </div>
 
+          {/* Mobile */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Mobile Number</label>
             <input 
@@ -370,6 +377,7 @@ dispatch(setUserData(data.user));
             />
           </div>
 
+          {/* Password */}
           <div className="form-anim space-y-1">
             <div className="flex justify-between items-center">
               <label className="text-xs font-medium text-slate-300">Password</label>
@@ -406,6 +414,7 @@ dispatch(setUserData(data.user));
             )}
           </div>
 
+          {/* Submit Button */}
           <div className="form-anim pt-1">
             <button
               type="submit" 
@@ -426,7 +435,7 @@ dispatch(setUserData(data.user));
           </div>
         </form>
 
-        {/* --- DIVIDER --- */}
+        {/* Divider */}
         <div className="relative my-3.5 form-anim">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-800" />
@@ -436,7 +445,7 @@ dispatch(setUserData(data.user));
           </div>
         </div>
 
-        {/* --- GOOGLE AUTH BUTTON WITH ICON --- */}
+        {/* Google Auth */}
         <div className="form-anim">
           <button 
             type="button"
@@ -456,6 +465,7 @@ dispatch(setUserData(data.user));
           </button>
         </div>
 
+        {/* Login Link */}
         <div className="text-center mt-3.5 form-anim">
           <p className="text-xs text-slate-400">
             Already have an account?{' '}
