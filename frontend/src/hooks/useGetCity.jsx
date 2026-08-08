@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { serverUrl } from '../App'
 import { useDispatch, useSelector } from 'react-redux'
-import { setCity } from '../redux/userSlice'
+import { setCity, setAddress } from '../redux/userSlice'
 import axios from 'axios'
 
 function useGetCity() {
@@ -18,15 +18,12 @@ function useGetCity() {
                 const latitude = position.coords.latitude
                 const longitude = position.coords.longitude
 
-                // Geoapify Reverse Geocoding API
                 const result = await axios.get(
                     `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`
                 )
 
                 const location = result.data.results[0]
-                console.log("Geoapify Full Response:", location)
 
-                // Exact location ke liye fields check karein
                 let exactLocation = 
                     location.suburb || 
                     location.hamlet || 
@@ -36,18 +33,18 @@ function useGetCity() {
                     location.county ||
                     location.district
 
-                // Agar Geoapify me Thane ya district aaye, toh agar location data me koi aur choti jagah ho toh woh lein, 
-                // ya agar aapko manually Bhiwandi set karna hai jab aap wahan ho:
                 if (exactLocation && exactLocation.includes("Thane")) {
-                    // Agar aap chahte hain ki Geoapify ke 'Thane' ko aap override karke Bhiwandi karein:
                     exactLocation = "Bhiwandi" 
                 }
 
+                const addressLine1 = location.address_line1 || ""
+                const addressLine2 = location.address_line2 || ""
+                const fullAddress = addressLine1 + (addressLine2 ? ", " + addressLine2 : "")
+
                 if (exactLocation) {
                     dispatch(setCity(exactLocation))
-                    console.log("Detected Location with Geoapify:", exactLocation)
+                    dispatch(setAddress(fullAddress)) 
 
-                    // Backend par update karein
                     try {
                         await axios.post(
                             `${serverUrl}/api/user/update-city`,
@@ -64,6 +61,9 @@ function useGetCity() {
             }
         })
     }, [dispatch, city])
+
+    // ✅ YEH LINE BOHOT ZAROORI HAI!
+    return { city }
 }
 
 export default useGetCity
