@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, ShoppingCart, Search, User, LogOut, MapPin, Menu, X, Home } from "lucide-react";
+import { Bell, ShoppingCart, Search, User, LogOut, MapPin, Menu, X, Plus, FileText } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import gsap from "gsap";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 import useGetCity from "../hooks/useGetCurrentUser";
 import { setUserData } from '../redux/userSlice';
@@ -12,308 +13,212 @@ function Nav1() {
   const { userData, city } = useSelector((state) => state.user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cityLoading, setCityLoading] = useState(true);
-  
-  const logoRef = useRef(null);
-  const searchRef = useRef(null);
-  const rightRef = useRef(null);
-  const cartRef = useRef(null);
-  const bellRef = useRef(null);
-  const userRef = useRef(null);
-  const logoutRef = useRef(null);
-  const locationRef = useRef(null);
-  const mobileMenuRef = useRef(null);
-  
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // Check if user is admin
-  const isAdmin = userData?.role === 'admin';
+  // Refs for GSAP
+  const logoRef = useRef(null);
+  const centerLinksRef = useRef(null);
+  const rightRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const locationRef = useRef(null);
+
+  // Check Admin / Owner
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'owner';
 
   // Logout Function
   const Hndlelogout = async () => {
     try {
       await axios.post(`${serverUrl}/api/auth/signout`, { withCredentials: true });
       dispatch(setUserData(null));
+      navigate("/signin");
     } catch (error) {
       console.log("❌ Logout Error:", error.response?.data || error.message);
     }
   };
 
-  // Call the custom hook to get city
+  // Get City Hook
   useGetCity();
 
-  // Update loading state when city or userData.city changes
   useEffect(() => {
     if (city || userData?.city) {
       setCityLoading(false);
     }
   }, [city, userData]);
 
+  // GSAP Animations (Screenshot ki tarah smooth entry)
   useEffect(() => {
-    // Logo entrance
-    gsap.from(logoRef.current, {
-      x: -50,
-      opacity: 0,
-      duration: 1,
-      ease: "back.out(1.7)",
-    });
-
-    // Search bar - Only animate if not admin
-    if (!isAdmin) {
-      gsap.from(searchRef.current, {
-        y: -20,
-        opacity: 0,
-        duration: 0.8,
-        delay: 0.2,
-        ease: "power3.out",
-      });
-    }
-
-    // Location
-    gsap.from(locationRef.current, {
-      y: -20,
-      opacity: 0,
-      duration: 0.8,
-      delay: 0.3,
-      ease: "power3.out",
-    });
-
-    // Right section
-    gsap.from(rightRef.current, {
-      x: 50,
-      opacity: 0,
-      duration: 1,
-      delay: 0.1,
-      ease: "back.out(1.7)",
-    });
-
-    // Stagger - Hide cart for admin
-    const elementsToAnimate = [bellRef.current, userRef.current, logoutRef.current];
-    if (!isAdmin) {
-      elementsToAnimate.unshift(cartRef.current);
-    }
-    
-    gsap.from(elementsToAnimate, {
-      y: -30,
-      opacity: 0,
-      duration: 0.6,
-      stagger: 0.1,
-      delay: 0.4,
-      ease: "power3.out",
-    });
-
-    // Mobile menu animation
-    if (mobileMenuRef.current) {
-      gsap.from(mobileMenuRef.current, {
-        x: 300,
-        opacity: 0,
-        duration: 0.4,
-        ease: "power3.out",
-      });
-    }
-
-  }, [isMenuOpen, isAdmin]);
+    gsap.from(logoRef.current, { x: -30, opacity: 0, duration: 0.8, ease: "power2.out" });
+    gsap.from(centerLinksRef.current, { y: -15, opacity: 0, duration: 0.6, delay: 0.2, ease: "power2.out" });
+    gsap.from(rightRef.current, { x: 30, opacity: 0, duration: 0.8, delay: 0.3, ease: "power2.out" });
+  }, [isAdmin]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
       
-      <div className="max-w-7xl mx-auto h-16 flex items-center justify-between px-4 sm:px-6">
+      {/* Navbar Container - Exact Screenshot Layout */}
+      <div className="max-w-7xl mx-auto h-[70px] flex items-center justify-between px-4 lg:px-8">
 
-        {/* Logo */}
+        {/* ================= LEFT: LOGO (AquaMart Theme) ================= */}
         <div 
           ref={logoRef}
-          className="flex items-center gap-2 cursor-pointer group flex-shrink-0"
+          className="flex items-center gap-1 cursor-pointer flex-shrink-0 group"
+          onClick={() => navigate("/")}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-xl shadow-md shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
-            🐟
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-md transition-transform duration-300 group-hover:scale-110">
+            <span className="text-lg md:text-xl">🐟</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">
+          <div className="flex items-baseline">
+            <h1 className="text-lg md:text-xl font-bold text-gray-800 tracking-tight">
               Aqua<span className="text-blue-500">Mart</span>
             </h1>
           </div>
         </div>
 
-        {/* Location - Dynamic city */}
-        <div 
-          ref={locationRef}
-          className="hidden md:flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-gray-200 transition-colors cursor-pointer"
-        >
-          <MapPin size={16} className="text-blue-500" />
-          {cityLoading ? (
-            <span className="text-sm text-gray-400 flex items-center gap-1">
-              <span className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
-              Detecting...
-            </span>
+        {/* ================= CENTER: LINKS / SEARCH ================= */}
+        <div ref={centerLinksRef} className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 gap-6">
+          
+          {/* 🌟 Admin/Owner Buttons */}
+          {isAdmin ? (
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => navigate("/add-item")}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-cyan-50 text-cyan-600 hover:bg-cyan-100 transition-colors text-sm font-semibold"
+              >
+                <Plus size={16} /> Add Food Item
+              </button>
+              
+              <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full hover:bg-gray-50 text-gray-700 transition-colors text-sm font-semibold">
+                <FileText size={16} /> My Orders
+              </button>
+            </div>
           ) : (
-            <span className="text-sm text-gray-700 font-medium">
-              {city || userData?.city || "Mumbai"}
-            </span>
+            /* 🌟 Normal User Search Bar */
+            <div className="flex items-center gap-6">
+              <div className="relative hidden lg:flex items-center text-gray-500">
+                <Search size={18} className="absolute left-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search fish, prawns..."
+                  className="pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full outline-none focus:border-blue-400 focus:bg-white text-sm w-64 transition-all"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 text-gray-600 text-sm font-medium cursor-pointer hover:text-cyan-500 transition-colors">
+                <MapPin size={18} className="text-blue-500" />
+                <span>
+                  {cityLoading ? "Loading..." : (city || userData?.city || "Mumbai")}
+                </span>
+              </div>
+            </div>
           )}
+
         </div>
 
-        {/* Search - Hide for admin */}
-        {!isAdmin && (
-          <div 
-            ref={searchRef}
-            className="hidden lg:flex items-center bg-gray-100 rounded-full px-4 py-2 w-80 hover:bg-gray-200 transition-colors focus-within:bg-gray-200 focus-within:ring-2 focus-within:ring-blue-400"
-          >
-            <Search size={18} className="text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search fish, prawns..."
-              className="bg-transparent outline-none w-full ml-2 text-gray-700 placeholder:text-gray-400 text-sm"
-            />
-          </div>
-        )}
+        {/* ================= RIGHT: ICONS & PROFILE ================= */}
+        <div ref={rightRef} className="flex items-center gap-1.5 sm:gap-3">
 
-        {/* Right Section */}
-        <div 
-          ref={rightRef}
-          className="flex items-center gap-1.5 sm:gap-2"
-        >
-
-          {/* Dashboard - Show for all users */}
-          <div className="hidden md:flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-gray-200 transition-colors cursor-pointer">
-            <Home size={16} className="text-blue-500" />
-            <span className="text-sm text-gray-700 font-medium hidden xl:inline">Dashboard</span>
-          </div>
-
-          {/* Cart - Hide for admin */}
+          {/* Cart - Only for Normal Users */}
           {!isAdmin && (
             <button 
-              ref={cartRef}
-              className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="relative p-2 rounded-full hover:bg-slate-50 transition-colors text-gray-700 hidden sm:block"
             >
-              <ShoppingCart size={20} className="text-gray-700" />
-              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-blue-500 text-xs flex items-center justify-center text-white font-medium">
-                2
+              <ShoppingCart size={22} />
+              <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-medium shadow-sm">
+                0
               </span>
             </button>
           )}
 
-          {/* Bell - Show for all users */}
-          <button 
-            ref={bellRef}
-            className="relative p-2 rounded-full hover:bg-gray-100 transition-colors hidden sm:block"
-          >
-            <Bell size={20} className="text-gray-700" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+          {/* Notification Bell */}
+          <button className="relative p-2 rounded-full hover:bg-slate-50 transition-colors text-gray-700 hidden sm:block">
+            <Bell size={22} />
+            <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-400 rounded-full"></span>
           </button>
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Menu Button (Visible on Small Screens) */}
           <button 
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="md:hidden p-2 rounded-full hover:bg-slate-50 transition-colors text-gray-700"
           >
-            {isMenuOpen ? (
-              <X size={20} className="text-gray-700" />
-            ) : (
-              <Menu size={20} className="text-gray-700" />
-            )}
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          {/* User */}
-          <div 
-            ref={userRef}
-            className="hidden md:flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-gray-200 transition-colors cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white">
-              <User size={16} />
-            </div>
-            <div className="hidden xl:block">
-              <p className="text-sm font-semibold text-gray-800 leading-tight">
-                {userData?.fullName || "Guest"}
-              </p>
-              <p className="text-xs text-gray-500 leading-tight capitalize">
-                {userData?.role || "User"}
-              </p>
-            </div>
+          {/* User Avatar - (Screenshot jaisa 'A' but Blue theme) */}
+          <div className="hidden md:flex items-center gap-2 cursor-pointer ml-1">
+             <div className="w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/30">
+               {userData?.fullName?.charAt(0).toUpperCase() || "A"}
+             </div>
           </div>
 
-          {/* Logout Button - Show for all users */}
-          <button 
-            ref={logoutRef}
-            onClick={Hndlelogout}
-            className="hidden md:flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-full transition-colors duration-200 text-sm font-medium"
-          >
-            <LogOut size={16} />
-            <span className="hidden xl:inline">Logout</span>
-          </button>
+          {/* Logout - Only for logged in users */}
+          {userData && (
+            <button 
+              onClick={Hndlelogout}
+              className="hidden lg:flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-full transition-colors duration-200 text-sm font-semibold"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
+          )}
+
         </div>
 
       </div>
 
-      {/* Mobile Menu */}
+      {/* ================= MOBILE MENU DROPDOWN (Fully Responsive) ================= */}
       {isMenuOpen && (
         <div 
           ref={mobileMenuRef}
-          className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg p-4"
+          className="md:hidden absolute top-[70px] left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-xl p-5 space-y-4"
         >
-          {/* Search - Hide for admin in mobile menu */}
-          {!isAdmin && (
-            <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 mb-3">
-              <Search size={18} className="text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search fish..."
-                className="bg-transparent outline-none w-full ml-2 text-gray-700 placeholder:text-gray-400 text-sm"
-              />
+          
+          {/* Mobile Admin/User Links */}
+          {isAdmin ? (
+            <div className="space-y-2">
+              <button onClick={() => { navigate("/add-item"); setIsMenuOpen(false); }} className="w-full flex items-center justify-center gap-2 bg-cyan-50 text-cyan-600 px-4 py-3 rounded-full font-semibold text-sm">
+                <Plus size={18} /> Add Food Item
+              </button>
+              <button onClick={() => setIsMenuOpen(false)} className="w-full flex items-center justify-center gap-2 bg-slate-50 text-gray-700 px-4 py-3 rounded-full font-semibold text-sm">
+                <FileText size={18} /> My Orders
+              </button>
+            </div>
+          ) : (
+            // Mobile User Links
+            <div className="space-y-3">
+              {/* Search Bar for Mobile */}
+              <div className="flex items-center bg-slate-50 rounded-full px-4 py-3 border border-slate-200">
+                <Search size={18} className="text-gray-400" />
+                <input type="text" placeholder="Search fish..." className="bg-transparent outline-none w-full ml-2 text-gray-700 text-sm" />
+              </div>
+              {/* Location for Mobile */}
+              <div className="flex items-center justify-center px-2 py-2 bg-slate-50 rounded-full">
+                 <span className="text-sm text-gray-700 font-medium flex items-center gap-2">
+                   <MapPin size={16} className="text-blue-500" /> 
+                   {cityLoading ? "Detecting..." : (city || userData?.city || "Mumbai")}
+                 </span>
+              </div>
             </div>
           )}
 
-          {/* Navigation Links */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <Home size={18} className="text-blue-500" />
-              <span className="text-gray-700">Dashboard</span>
-            </div>
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <MapPin size={18} className="text-blue-500" />
-              <span className="text-gray-700">
-                {cityLoading ? "Detecting..." : (city || userData?.city || "Mumbai")}
-              </span>
-            </div>
-          </div>
+          <hr className="border-gray-100 my-2" />
 
-          <hr className="my-3 border-gray-200" />
-
-          {/* User Info */}
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white">
-              <User size={18} />
+          {/* Mobile Profile & Logout Section */}
+          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                {userData?.fullName?.charAt(0).toUpperCase() || "A"}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800 leading-tight">{userData?.fullName || "Guest"}</p>
+                <p className="text-xs text-blue-500 font-medium capitalize leading-tight mt-0.5">{userData?.role || "User"}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800">
-                {userData?.fullName || "Guest"}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {userData?.role || "User"}
-              </p>
-            </div>
-          </div>
-
-          {/* Actions - Hide cart for admin */}
-          <div className="flex gap-2 mb-3">
-            {!isAdmin && (
-              <button className="flex-1 flex items-center justify-center gap-2 bg-gray-100 rounded-full px-4 py-2 text-gray-700 text-sm hover:bg-gray-200 transition-colors">
-                <ShoppingCart size={16} />
-                <span>Cart (2)</span>
-              </button>
-            )}
-            <button className={`${!isAdmin ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 bg-gray-100 rounded-full px-4 py-2 text-gray-700 text-sm hover:bg-gray-200 transition-colors`}>
-              <Bell size={16} />
-              <span>Alerts</span>
+            
+            <button onClick={Hndlelogout} className="flex items-center gap-1.5 bg-red-50 text-red-500 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-100 transition-colors">
+              <LogOut size={16} /> Logout
             </button>
           </div>
-
-          {/* Logout (Mobile) */}
-          <button 
-            onClick={Hndlelogout}
-            className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full transition-colors text-sm font-medium"
-          >
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
         </div>
       )}
 

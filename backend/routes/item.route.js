@@ -1,14 +1,12 @@
 import express from "express";
-import { addItem, editItem } from "../controllers/item.controllers.js";
 import isAuth from "../middlewares/isAuth.js";
-import { upload } from "../utils/multer.js";
+import { upload } from "../middlewares/multer.js";
+// ✅ FIX: 'Item' se 'item' (small 'i') kar diya hai
+import { addItem, editItem } from "../controllers/item.controller.js"; 
 
 const itemRouter = express.Router();
 
-// 🐟 Add new item route
-itemRouter.post("/add", isAuth, upload.single("image"), addItem);
-
-// ✏️ Edit existing item route (using itemId as a parameter)
-itemRouter.put("/edit/:itemId", isAuth, upload.single("image"), editItem);
+itemRouter.post("/add-item", isAuth, upload.single("image"), addItem);
+itemRouter.put("/edit-item/:itemId", isAuth, upload.single("image"), editItem);
 
 export default itemRouter;

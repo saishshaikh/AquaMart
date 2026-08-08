@@ -51,8 +51,7 @@ const SignIn = () => {
       );
 
       // ✅ Dispatch user data to Redux
-      dispatch(setUserData(result.data));
-      
+dispatch(setUserData(result.data.user));      
       console.log("Login Success:", result.data);
       navigate("/");
       

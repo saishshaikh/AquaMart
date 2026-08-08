@@ -1,5 +1,5 @@
 import express from "express";
-import isAuth from "../middleware/isAuth.js";
+import isAuth from "../middlewares/isAuth.js";
 import { getUser, updateCity } from "../controllers/user.controller.js";
 
 const userRouter = express.Router();

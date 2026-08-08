@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 
 import useGetCity from "./hooks/useGetCity";
 import useGetCurrentUser from "./hooks/useGetCurrentUser";
+import useGetMyShop from "./hooks/useGetMyShop";
 
 export const serverUrl = "http://localhost:8000";
 
@@ -17,6 +18,7 @@ function App() {
   // Custom hooks should be called at the top level
   useGetCurrentUser();
   useGetCity();
+  useGetMyShop()
 
   return (
     <Routes>
