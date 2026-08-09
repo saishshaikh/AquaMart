@@ -4,9 +4,15 @@ import { useSelector } from 'react-redux';
 import { Store, ArrowRight, Pencil, Fish, Plus, MapPin, Globe, Droplets, Trash2 } from 'lucide-react';
 import gsap from 'gsap';
 
+// ✅ Hook import kiya
+import useGetMyShop from "../hooks/useGetMyShop";
+
 function AdminDashboard() {
   const navigate = useNavigate();
   const { myShopData } = useSelector((state) => state.owner);
+
+  // ✅ Hook call kiya
+  useGetMyShop();
 
   // Refs
   const cardRef = useRef(null);
@@ -68,7 +74,6 @@ function AdminDashboard() {
         "-=0.4"
       );
 
-      // ✅ Items list ka animation bhi add kiya
       if (myShopData.items && myShopData.items.length > 0) {
         tl.fromTo(itemsListRef.current, 
           { y: 30, opacity: 0 }, 
@@ -114,7 +119,7 @@ function AdminDashboard() {
   // ==========================================
   if (myShopData) {
     return (
-      <div className="relative min-h-[calc(100vh-70px)] bg-gradient-to-b from-[#e0f7fa] via-[#b2ebf2] to-[#80deea] overflow-hidden flex flex-col items-center justify-center p-4 gap-8">
+      <div className="relative min-h-[calc(100vh-70px)] bg-gradient-to-b from-[#e0f7fa] via-[#b2ebf2] to-[#80deea] overflow-hidden flex flex-col items-center justify-center p-4 gap-8 pb-16">
         
         {/* 🫧 Floating Bubbles */}
         {[...Array(8)].map((_, i) => (
@@ -134,7 +139,7 @@ function AdminDashboard() {
         {/* 🌊 Bottom Wave */}
         <div 
           ref={waveRef}
-          className="absolute bottom-0 left-0 w-full h-20"
+          className="absolute bottom-0 left-0 w-full h-20 pointer-events-none"
         >
           <svg viewBox="0 0 1440 320" className="w-full h-full fill-[#4dd0e1]/40">
             <path d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,170.7C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
@@ -223,22 +228,23 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* ========== 3. ITEMS LIST (Bilkul screenshot jaisa) ========== */}
+        {/* ========== 3. ITEMS LIST (Fixed with Fallbacks) ========== */}
         {myShopData.items && myShopData.items.length > 0 && (
           <div 
             ref={itemsListRef}
             className="relative z-10 w-full max-w-3xl flex flex-col gap-4 mt-2"
           >
-            {myShopData.items.map((item) => (
+            <h3 className="text-xl font-bold text-gray-800 px-2">Your Menu / Catches</h3>
+            {myShopData.items.map((item, index) => (
               <div 
-                key={item._id}
+                key={item._id || index}
                 className="group w-full bg-white/60 backdrop-blur-xl border border-white/40 shadow-lg rounded-2xl overflow-hidden flex items-center p-4 gap-4 hover:shadow-cyan-500/20 transition-all duration-300"
               >
-                {/* Item Image (Left side) */}
-                <div className="w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden border border-white/30">
+                {/* Item Image */}
+                <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 rounded-xl overflow-hidden border border-white/30 bg-gray-100">
                   <img 
-                    src={item.image} 
-                    alt={item.name} 
+                    src={item.image || item.imageUrl} 
+                    alt={item.name || "Catch"} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.target.onerror = null;
@@ -247,29 +253,29 @@ function AdminDashboard() {
                   />
                 </div>
 
-                {/* Item Details (Right side) */}
+                {/* Item Details */}
                 <div className="flex-1 flex flex-col justify-center">
                   <h3 className="text-lg font-bold text-gray-800">
-                    {item.name}
+                    {item.name || item.itemName || item.title || "Unnamed Catch"}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    Category: {item.category}
+                    Category: {item.category || "General"}
                   </p>
                   <p className="text-sm font-semibold text-cyan-600 mt-1">
-                    ₹{item.price}
+                    ₹{item.price || 0}
                   </p>
                 </div>
 
-                {/* Edit & Delete Icons (Right corner) */}
+                {/* Edit & Delete Icons */}
                 <div className="flex flex-col gap-2 self-center">
                   <button 
-                    className="p-1.5 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-500 transition-colors"
-                    onClick={() => console.log("Edit item", item._id)}
+                    className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 transition-colors"
+                    onClick={() => navigate(`/edit-item/${item._id}`)}
                   >
                     <Pencil size={16} />
                   </button>
                   <button 
-                    className="p-1.5 rounded-full bg-red-100 hover:bg-red-200 text-red-500 transition-colors"
+                    className="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-600 transition-colors"
                     onClick={() => console.log("Delete item", item._id)}
                   >
                     <Trash2 size={16} />
@@ -306,7 +312,7 @@ function AdminDashboard() {
       ))}
 
       {/* 🌊 Bottom Wave */}
-      <div ref={waveRef} className="absolute bottom-0 left-0 w-full h-20">
+      <div ref={waveRef} className="absolute bottom-0 left-0 w-full h-20 pointer-events-none">
         <svg viewBox="0 0 1440 320" className="w-full h-full fill-[#4dd0e1]/30">
           <path d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,170.7C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
         </svg>

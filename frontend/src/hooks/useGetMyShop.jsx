@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useDispatch } from "react-redux"; // ✅ Redux dispatch add kiya
+import { setMyShopData } from "../redux/ownerSlice"; // ✅ Redux action add kiya
 import { serverUrl } from "../App";
 
 const useGetMyShop = () => {
@@ -7,37 +9,41 @@ const useGetMyShop = () => {
   const [shop, setShop] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const dispatch = useDispatch(); // ✅ dispatch initialize kiya
 
   // Function to fetch shop data
   const fetchMyShop = async () => {
     setLoading(true);
-    setError(null); // Reset error before new fetch
+    setError(null);
 
     try {
       const res = await axios.get(
         `${serverUrl}/api/shop/my-shop`,
         {
-          withCredentials: true, // Important: cookies bhejne ke liye
+          withCredentials: true,
         }
       );
 
       // Agar response successful hai
       if (res.data.success) {
         setShop(res.data.shop);
+        // ✅ Redux ko bhi update karo
+        dispatch(setMyShopData(res.data.shop));
+        console.log("✅ Shop Data Updated in Redux");
       } else {
-        // Agar success false hai (backend ne koi message bheja)
         setError(res.data.message || "Failed to fetch shop data");
+        dispatch(setMyShopData(null));
       }
 
     } catch (error) {
-      // Handle Axios errors
       const errorMessage = error.response?.data?.message || error.message || "Something went wrong while fetching shop";
       setError(errorMessage);
       
-      // Agar 404 (Shop not found) aata hai, toh error set karo lekin shop ko null rakho
       if (error.response?.status === 404) {
         console.log("ℹ️ User doesn't have a shop yet.");
         setShop(null);
+        dispatch(setMyShopData(null));
       } else {
         console.error("❌ Error fetching shop:", errorMessage);
       }

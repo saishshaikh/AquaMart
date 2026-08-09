@@ -1,43 +1,42 @@
 import Shop from "../models/shop.model.js";
-import uploadOnImageKit from "../utils/imagekitUpload.js"; // ✅ 1. Cloudinary hata kar ImageKit import kiya
+import uploadOnImageKit from "../utils/imagekitUpload.js";
 
+// ✅ 1. Create or Update Shop Controller
 export const createShop = async (req, res) => {
     try {
         const { name, city, state, address, shopCategory } = req.body;
         let image;
 
-        // 1. Check karo ki image upload hui hai ya nahi
+        // Check if image is uploaded
         if (req.file) {
-            image = await uploadOnImageKit(req.file.path); // ✅ 2. Cloudinary ki jagah ImageKit call kiya
-            // Agar upload fail ho gaya toh error message return kar do
+            image = await uploadOnImageKit(req.file.path);
             if (!image) {
-                return res.status(500).json({ message: "Image upload failed" });
+                return res.status(500).json({ success: false, message: "Image upload failed" });
             }
         }
 
-        // 2. FindOneAndUpdate use karo (Upsert = true matlab agar nahi mila toh create kar do)
+        // Find and update or insert shop
         const shop = await Shop.findOneAndUpdate(
-            { owner: req.userId }, // Condition: Find shop by current logged-in user's ID
+            { owner: req.userId }, 
             {
                 name,
                 city,
                 state,
                 address,
-                shopCategory, // Aapne form mein shopCategory bhi bheja tha, usko add kiya
-                image, // Agar image undefined hai toh update nahi hoga (mongodb undefined ignore karega)
+                shopCategory,
+                image,
                 owner: req.userId
             },
             { 
-                new: true,       // Return the updated document
-                upsert: true,    // Agar shop nahi mili, toh nayi create kar do (create + update)
+                new: true,       
+                upsert: true,    
                 setDefaultsOnInsert: true 
             }
         );
 
-        // 3. Owner ko populate karo (details dikhane ke liye)
+        // Populate owner details
         await shop.populate("owner");
 
-        // 4. Success Response
         return res.status(201).json({
             success: true,
             message: "Shop created/updated successfully",
@@ -50,15 +49,14 @@ export const createShop = async (req, res) => {
     }
 };
 
-// ... (Upar createEditShop ka code aapka pehle se hi hoga) ...
-
-// ✅ Corrected getMyShop Controller
+// ✅ 2. Get My Shop Controller (With Items Populated)
 export const getMyShop = async (req, res) => {
     try {
-        // 1. Correct syntax: .populate("owner") alag parentheses mein
-        const shop = await Shop.findOne({ owner: req.userId }).populate("owner");
+        // Populating both owner and items so frontend gets the full item objects (name, price, etc.)
+        const shop = await Shop.findOne({ owner: req.userId })
+            .populate("owner")
+            .populate("items");
 
-        // 2. Agar shop nahi mili, toh 404 error return karo (null nahi)
         if (!shop) {
             return res.status(404).json({
                 success: false,
@@ -66,7 +64,6 @@ export const getMyShop = async (req, res) => {
             });
         }
 
-        // 3. Success response bhejo
         return res.status(200).json({
             success: true,
             message: "Shop fetched successfully",

@@ -1,6 +1,6 @@
 import Item from "../models/item.model.js";
 import Shop from "../models/shop.model.js";
-import uploadOnImageKit from "../utils/imagekitUpload.js"; // ✅ 1. Cloudinary hata kar ImageKit import kiya
+import uploadOnImageKit from "../utils/imagekitUpload.js"; 
 
 // ==========================================
 // 1. ADD ITEM CONTROLLER
@@ -12,7 +12,7 @@ export const addItem = async (req, res) => {
 
         // Image upload logic
         if (req.file) {
-            image = await uploadOnImageKit(req.file.path); // ✅ 2. Cloudinary ki jagah ImageKit call kiya
+            image = await uploadOnImageKit(req.file.path);
             if (!image) {
                 return res.status(500).json({ success: false, message: "Image upload failed" });
             }
@@ -24,7 +24,7 @@ export const addItem = async (req, res) => {
             return res.status(400).json({ success: false, message: "Shop not found for this user. Please create a shop first." });
         }
 
-        // Item create karo (Capital 'I' use karo)
+        // Naya item create karo
         const item = await Item.create({
             name,
             category,
@@ -33,15 +33,23 @@ export const addItem = async (req, res) => {
             shop: shop._id
         });
 
+        // Shop validation error se bachne ke liye findByIdAndUpdate aur $push ka use karein
+        const updatedShop = await Shop.findByIdAndUpdate(
+            shop._id,
+            { $push: { items: item._id } },
+            { new: true }
+        ).populate("items");
+
         return res.status(201).json({
             success: true,
             message: "Item added successfully",
-            item
+            item,
+            shop: updatedShop 
         });
 
     } catch (error) {
         console.error("Error in addItem:", error);
-        return res.status(500).json({ success: false, message: "Internal Server Error" });
+        return res.status(500).json({ success: false, message: error.message || "Internal Server Error" });
     }
 };
 
@@ -57,7 +65,7 @@ export const editItem = async (req, res) => {
 
         // Image logic: Agar nayi file upload hui hai, toh upload karo
         if (req.file) {
-            image = await uploadOnImageKit(req.file.path); // ✅ 2. Cloudinary ki jagah ImageKit call kiya
+            image = await uploadOnImageKit(req.file.path);
             if (!image) {
                 return res.status(500).json({ success: false, message: "Image upload failed" });
             }
@@ -66,7 +74,6 @@ export const editItem = async (req, res) => {
         // Update object prepare karo
         const updateData = { name, category, price };
         
-        // Agar nayi image upload hui hai, tabhi update object mein add karo
         if (image) {
             updateData.image = image;
         }
@@ -75,7 +82,7 @@ export const editItem = async (req, res) => {
         const item = await Item.findByIdAndUpdate(
             itemId, 
             updateData, 
-            { new: true } // Updated item return karega
+            { new: true }
         );
 
         if (!item) {

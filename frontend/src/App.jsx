@@ -6,9 +6,10 @@ import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
 import Home from "./pages/Home";
 
-// ✅ FIXED: Exact file name match kiya (Capital C, Capital S)
+// ✅ Imports for Shop & Items
 import CreateShop from "./pages/CreateShop"; 
-import AddItem from "./pages/AddItem"; // ✅ 1. AddItem import kar liya
+import AddItem from "./pages/AddItem"; 
+import EditItem from "./pages/EditItem"; // ✅ EditItem successfully imported
 
 import useGetCity from "./hooks/useGetCity";
 import useGetCurrentUser from "./hooks/useGetCurrentUser";
@@ -56,10 +57,16 @@ function App() {
         element={userData?.role === 'owner' || userData?.role === 'admin' ? <CreateShop /> : <Navigate to="/home" />}
       />
 
-      {/* ✅ 2. Add Item Route (New) */}
+      {/* ✅ Add Item Route */}
       <Route
         path="/add-item"
         element={userData?.role === 'owner' || userData?.role === 'admin' ? <AddItem /> : <Navigate to="/home" />}
+      />
+
+      {/* ✅ Edit Item Route (Protected with Role Check) */}
+      <Route 
+        path="/edit-item/:itemId" 
+        element={userData?.role === 'owner' || userData?.role === 'admin' ? <EditItem /> : <Navigate to="/home" />} 
       />
     </Routes>
   );

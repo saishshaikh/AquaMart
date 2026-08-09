@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
-import { ArrowLeft, Plus, UploadCloud, CheckCircle, Fish } from 'lucide-react';
+import { ArrowLeft, Plus, UploadCloud, Fish } from 'lucide-react';
 import gsap from 'gsap';
 import { serverUrl } from '../App';
+import { setMyShopData } from '../redux/ownerSlice'; // ✅ 1. Redux action import kiya
 
 function AddItem() {
   const navigate = useNavigate();
@@ -30,7 +31,6 @@ function AddItem() {
   const bubblesRef = useRef([]);
 
   useEffect(() => {
-    // 🫧 Bubbles Animation
     bubblesRef.current.forEach((bubble, index) => {
       gsap.to(bubble, {
         y: -300,
@@ -42,7 +42,6 @@ function AddItem() {
       });
     });
 
-    // 🎯 Card entry animation
     const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
     tl.fromTo(pageRef.current, { opacity: 0 }, { opacity: 1, duration: 0.5 })
@@ -93,7 +92,13 @@ function AddItem() {
 
       if (res.data.success) {
         alert('Item added successfully!');
-        navigate('/home');
+        
+        // ✅ 2. MAGICAL STEP: Backend se jo updated shop aayi hai use Redux me save karo
+        if (res.data.shop) {
+          dispatch(setMyShopData(res.data.shop));
+        }
+        
+        navigate('/home'); // Dashboard par le jao
       }
     } catch (err) {
       console.error(err);
@@ -108,7 +113,6 @@ function AddItem() {
       ref={pageRef}
       className="relative min-h-screen bg-gradient-to-b from-[#e0f7fa] via-[#b2ebf2] to-[#80deea] overflow-hidden flex items-center justify-center py-10 px-4"
     >
-      {/* 🫧 Floating Bubbles */}
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
@@ -123,13 +127,10 @@ function AddItem() {
         />
       ))}
 
-      {/* 🌊 Glass Card */}
       <div 
         ref={cardRef}
         className="relative z-10 w-full max-w-2xl bg-white/60 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl p-8"
       >
-        
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <button 
             onClick={() => navigate('/home')} 
@@ -150,14 +151,12 @@ function AddItem() {
         </div>
 
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-          
           {error && (
             <div className="p-3 bg-red-100/50 backdrop-blur-sm border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
 
-          {/* Name */}
           <div className="form-group space-y-1">
             <label className="text-sm font-medium text-gray-700">Item Name *</label>
             <input 
@@ -167,18 +166,17 @@ function AddItem() {
               onChange={handleChange}
               placeholder="e.g. Fresh Prawns, King Fish" 
               required
-              className="w-full px-4 py-2.5 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-gray-800"
+              className="w-full px-4 py-2.5 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all text-gray-800"
             />
           </div>
 
-                    {/* ✅ Category Dropdown */}
           <div className="form-group space-y-1">
             <label className="text-sm font-medium text-gray-700">Category</label>
             <select 
               name="category" 
               value={formData.category} 
               onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-gray-800"
+              className="w-full px-4 py-2.5 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all text-gray-800"
             >
               <option value="">Select Category</option>
               <option value="Fresh Fish">Fresh Fish</option>
@@ -191,7 +189,6 @@ function AddItem() {
             </select>
           </div>
 
-          {/* Price */}
           <div className="form-group space-y-1">
             <label className="text-sm font-medium text-gray-700">Price (₹) *</label>
             <input 
@@ -201,11 +198,10 @@ function AddItem() {
               onChange={handleChange}
               placeholder="e.g. 299" 
               required
-              className="w-full px-4 py-2.5 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all text-gray-800"
+              className="w-full px-4 py-2.5 bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all text-gray-800"
             />
           </div>
 
-          {/* Image */}
           <div className="form-group space-y-1">
             <label className="text-sm font-medium text-gray-700">Item Image</label>
             <div className="border-2 border-dashed border-white/40 bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center hover:border-cyan-400 transition-colors cursor-pointer relative">
@@ -221,12 +217,11 @@ function AddItem() {
             </div>
           </div>
 
-          {/* Submit Button */}
           <button 
             ref={btnRef}
             type="submit" 
             disabled={loading}
-            className={`w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2 ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
+            className={`w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2 ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
           >
             {loading ? (
               <>
@@ -246,5 +241,4 @@ function AddItem() {
   );
 }
 
-// ✅ YE LINE BOHOT ZAROORI HAI!
 export default AddItem;
