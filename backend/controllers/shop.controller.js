@@ -1,14 +1,14 @@
 import Shop from "../models/shop.model.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import uploadOnImageKit from "../utils/imagekitUpload.js"; // ✅ 1. Cloudinary hata kar ImageKit import kiya
 
 export const createShop = async (req, res) => {
     try {
-        const { name, city, state, address } = req.body;
+        const { name, city, state, address, shopCategory } = req.body;
         let image;
 
         // 1. Check karo ki image upload hui hai ya nahi
         if (req.file) {
-            image = await uploadOnCloudinary(req.file.path);
+            image = await uploadOnImageKit(req.file.path); // ✅ 2. Cloudinary ki jagah ImageKit call kiya
             // Agar upload fail ho gaya toh error message return kar do
             if (!image) {
                 return res.status(500).json({ message: "Image upload failed" });
@@ -23,6 +23,7 @@ export const createShop = async (req, res) => {
                 city,
                 state,
                 address,
+                shopCategory, // Aapne form mein shopCategory bhi bheja tha, usko add kiya
                 image, // Agar image undefined hai toh update nahi hoga (mongodb undefined ignore karega)
                 owner: req.userId
             },

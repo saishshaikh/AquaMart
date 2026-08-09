@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 
 // ✅ FIXED: Exact file name match kiya (Capital C, Capital S)
 import CreateShop from "./pages/CreateShop"; 
+import AddItem from "./pages/AddItem"; // ✅ 1. AddItem import kar liya
 
 import useGetCity from "./hooks/useGetCity";
 import useGetCurrentUser from "./hooks/useGetCurrentUser";
@@ -53,6 +54,12 @@ function App() {
       <Route
         path="/create-shop"
         element={userData?.role === 'owner' || userData?.role === 'admin' ? <CreateShop /> : <Navigate to="/home" />}
+      />
+
+      {/* ✅ 2. Add Item Route (New) */}
+      <Route
+        path="/add-item"
+        element={userData?.role === 'owner' || userData?.role === 'admin' ? <AddItem /> : <Navigate to="/home" />}
       />
     </Routes>
   );

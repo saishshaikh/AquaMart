@@ -27,5 +27,11 @@ const storage = multer.diskStorage({
     }
 });
 
-// 2. Multer instance export karein
-export const upload = multer({ storage });
+// 2. Multer instance export karein (✅ Timeout aur Size Limit add kiya)
+export const upload = multer({ 
+    storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit (Default 1MB tha)
+    },
+    timeout: 60000 // 60 second timeout (Default 30 second tha)
+});

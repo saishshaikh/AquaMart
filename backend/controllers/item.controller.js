@@ -1,18 +1,18 @@
 import Item from "../models/item.model.js";
 import Shop from "../models/shop.model.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import uploadOnImageKit from "../utils/imagekitUpload.js"; // ✅ 1. Cloudinary hata kar ImageKit import kiya
 
 // ==========================================
 // 1. ADD ITEM CONTROLLER
 // ==========================================
 export const addItem = async (req, res) => {
     try {
-        const { name, category, price } = req.body; // ✅ 'foodType' hata kar 'category' rakha
+        const { name, category, price } = req.body;
         let image;
 
         // Image upload logic
         if (req.file) {
-            image = await uploadOnCloudinary(req.file.path);
+            image = await uploadOnImageKit(req.file.path); // ✅ 2. Cloudinary ki jagah ImageKit call kiya
             if (!image) {
                 return res.status(500).json({ success: false, message: "Image upload failed" });
             }
@@ -27,7 +27,7 @@ export const addItem = async (req, res) => {
         // Item create karo (Capital 'I' use karo)
         const item = await Item.create({
             name,
-            category, // ✅ Sahi field
+            category,
             price,
             image,
             shop: shop._id
@@ -52,12 +52,12 @@ export const addItem = async (req, res) => {
 export const editItem = async (req, res) => {
     try {
         const itemId = req.params.itemId;
-        const { name, category, price } = req.body; // ✅ 'foodType' hata kar 'category' rakha
+        const { name, category, price } = req.body;
         let image;
 
-        // ✅ Image logic fix: Agar nayi file upload hui hai, toh upload karo
+        // Image logic: Agar nayi file upload hui hai, toh upload karo
         if (req.file) {
-            image = await uploadOnCloudinary(req.file.path);
+            image = await uploadOnImageKit(req.file.path); // ✅ 2. Cloudinary ki jagah ImageKit call kiya
             if (!image) {
                 return res.status(500).json({ success: false, message: "Image upload failed" });
             }
@@ -66,7 +66,7 @@ export const editItem = async (req, res) => {
         // Update object prepare karo
         const updateData = { name, category, price };
         
-        // ✅ Agar nayi image upload hui hai, tabhi update object mein add karo
+        // Agar nayi image upload hui hai, tabhi update object mein add karo
         if (image) {
             updateData.image = image;
         }

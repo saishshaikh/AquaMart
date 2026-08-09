@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, ShoppingCart, Search, User, LogOut, MapPin, Menu, X, Plus, FileText } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector, useDispatch } from "react-redux"; // ✅ YEH LINE IMPORTANT HAI
 import gsap from "gsap";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 import useGetCity from "../hooks/useGetCurrentUser";
-import useGetMyShop from "../hooks/useGetMyShop"; 
 import { setUserData } from '../redux/userSlice';
 import { serverUrl } from '../App';
 
@@ -19,20 +18,17 @@ function Nav1() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // ✅ Hook call karo (Redux mein shop data aayega)
-  useGetMyShop(); 
-
   const logoRef = useRef(null);
   const centerLinksRef = useRef(null);
   const rightRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const locationRef = useRef(null);
 
-  // ✅ EXACT LOGIC: Button sirf Owner hone par AUR ShopData hona par dikhega
-  const showAddButton = userData?.role === 'owner' && myShopData !== null && myShopData !== undefined;
+  // ✅ STRICT LOGIC: Admin/Owner, LEKIN sirf tabhi jab Shop Data ho!
+  const showAddButton = (userData?.role === 'admin' || userData?.role === 'owner') && myShopData !== null && myShopData !== undefined;
 
-  // ✅ Layout Logic: Agar Owner/Admin hai toh Center buttons dikhega (Search nahi)
-  const showAdminLayout = userData?.role === 'owner' || userData?.role === 'admin';
+  // ✅ Layout Logic: Admin/Owner layout dikhega (Center me Buttons)
+  const showAdminLayout = userData?.role === 'admin' || userData?.role === 'owner';
 
   const Hndlelogout = async () => {
     try {
@@ -62,10 +58,9 @@ function Nav1() {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-100">
       
-      {/* Navbar Container - Exact Screenshot Layout */}
       <div className="max-w-7xl mx-auto h-[70px] flex items-center justify-between px-4 lg:px-8">
 
-        {/* ================= LEFT: LOGO ================= */}
+        {/* LEFT: LOGO */}
         <div 
           ref={logoRef}
           className="flex items-center gap-1 cursor-pointer flex-shrink-0 group"
@@ -81,13 +76,13 @@ function Nav1() {
           </div>
         </div>
 
-        {/* ================= CENTER: BUTTONS (Owner/Admin) ================= */}
+        {/* CENTER: BUTTONS (Owner/Admin) */}
         {showAdminLayout ? (
           <div ref={centerLinksRef} className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 gap-6">
             
             <div className="flex items-center gap-3">
               
-              {/* ✅ 1. ADD FOOD ITEM (SIRF TABHI DIKHEGA JAB SHOPDATA HO) */}
+              {/* ✅ ADD FOOD ITEM (SIRF TABHI DIKHEGA JAB SHOPDATA HO) */}
               {showAddButton && (
                 <button 
                   onClick={() => navigate("/add-item")}
@@ -97,7 +92,7 @@ function Nav1() {
                 </button>
               )}
               
-              {/* ✅ 2. MY ORDERS (HAMESHA DIKHEGA) */}
+              {/* MY ORDERS (HAMESHA DIKHEGA) */}
               <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full hover:bg-gray-50 text-gray-700 transition-colors text-sm font-semibold">
                 <FileText size={16} /> My Orders
               </button>
@@ -105,7 +100,7 @@ function Nav1() {
 
           </div>
         ) : (
-          /* ================= CENTER: SEARCH (Normal User) ================= */
+          /* CENTER: SEARCH (Normal User) */
           <div ref={centerLinksRef} className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 gap-6">
             <div className="flex items-center gap-6">
               <div className="relative hidden lg:flex items-center text-gray-500">
@@ -124,36 +119,26 @@ function Nav1() {
           </div>
         )}
 
-        {/* ================= RIGHT: ICONS & PROFILE (EXACT SAME) ================= */}
+        {/* RIGHT: ICONS */}
         <div ref={rightRef} className="flex items-center gap-1.5 sm:gap-3">
-          
-          {/* Cart - Only for Normal Users */}
           {!showAdminLayout && (
             <button className="relative p-2 rounded-full hover:bg-slate-50 transition-colors text-gray-700 hidden sm:block">
               <ShoppingCart size={22} />
               <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-medium shadow-sm">0</span>
             </button>
           )}
-
-          {/* Notification Bell */}
           <button className="relative p-2 rounded-full hover:bg-slate-50 transition-colors text-gray-700 hidden sm:block">
             <Bell size={22} />
             <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-400 rounded-full"></span>
           </button>
-
-          {/* Mobile Menu Button */}
           <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 rounded-full hover:bg-slate-50 transition-colors text-gray-700">
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-
-          {/* User Avatar */}
           <div className="hidden md:flex items-center gap-2 cursor-pointer ml-1">
              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/30">
                {userData?.fullName?.charAt(0).toUpperCase() || "A"}
              </div>
           </div>
-
-          {/* Logout */}
           {userData && (
             <button onClick={Hndlelogout} className="hidden lg:flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-full transition-colors duration-200 text-sm font-semibold">
               <LogOut size={16} />
@@ -164,19 +149,16 @@ function Nav1() {
 
       </div>
 
-      {/* ================= MOBILE MENU (EXACT SAME) ================= */}
+      {/* MOBILE MENU */}
       {isMenuOpen && (
         <div ref={mobileMenuRef} className="md:hidden absolute top-[70px] left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-xl p-5 space-y-4">
-          
           {showAdminLayout ? (
             <div className="space-y-2">
-              {/* Mobile: Add Food Item (Hide when no shop) */}
               {showAddButton && (
                 <button onClick={() => { navigate("/add-item"); setIsMenuOpen(false); }} className="w-full flex items-center justify-center gap-2 bg-cyan-50 text-cyan-600 px-4 py-3 rounded-full font-semibold text-sm">
                   <Plus size={18} /> Add Food Item
                 </button>
               )}
-              {/* Mobile: My Orders (Always Show) */}
               <button onClick={() => setIsMenuOpen(false)} className="w-full flex items-center justify-center gap-2 bg-slate-50 text-gray-700 px-4 py-3 rounded-full font-semibold text-sm">
                 <FileText size={18} /> My Orders
               </button>
@@ -195,7 +177,6 @@ function Nav1() {
               </div>
             </div>
           )}
-
           <hr className="border-gray-100 my-2" />
           <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl">
             <div className="flex items-center gap-3">
