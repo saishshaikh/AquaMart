@@ -18,11 +18,17 @@ function useGetCity() {
                 const latitude = position.coords.latitude
                 const longitude = position.coords.longitude
 
+                // ✅ Check karne ke liye coordinates console me print karein
+                console.log("📍 GPS Coordinates:", latitude, longitude)
+
                 const result = await axios.get(
                     `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`
                 )
 
                 const location = result.data.results[0]
+                
+                // ✅ Raw location object check karne ke liye
+                console.log("🔍 Geoapify Full Location Data:", location)
 
                 let exactLocation = 
                     location.suburb || 
@@ -33,9 +39,8 @@ function useGetCity() {
                     location.county ||
                     location.district
 
-                if (exactLocation && exactLocation.includes("Thane")) {
-                    exactLocation = "Bhiwandi" 
-                }
+                // ✅ Final detected exact location console me print hogi
+                console.log("🎯 Exact Detected Location:", exactLocation)
 
                 const addressLine1 = location.address_line1 || ""
                 const addressLine2 = location.address_line2 || ""
@@ -51,7 +56,7 @@ function useGetCity() {
                             { city: exactLocation },
                             { withCredentials: true }
                         )
-                        console.log("✅ Location updated on backend")
+                        console.log("✅ Exact location updated on backend")
                     } catch (err) {
                         console.log("❌ Backend update error:", err.response?.data || err.message)
                     }
@@ -62,7 +67,6 @@ function useGetCity() {
         })
     }, [dispatch, city])
 
-    // ✅ YEH LINE BOHOT ZAROORI HAI!
     return { city }
 }
 

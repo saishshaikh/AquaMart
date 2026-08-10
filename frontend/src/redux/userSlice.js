@@ -7,6 +7,8 @@ const userSlice = createSlice({
         userData: null,
         city: null,
         address: null,
+        shops: [], // City ki shops store karne ke liye
+        items: [], // ✅ City ke items store karne ke liye state add kar di hai
     },
 
     reducers: {
@@ -21,9 +23,19 @@ const userSlice = createSlice({
         setAddress: (state, action) => {
             state.address = action.payload;
         },
+
+        // Shops ko Redux me set/store karne ke liye reducer
+        setShops: (state, action) => {
+            state.shops = action.payload;
+        },
+
+        // ✅ Items ko Redux me set/store karne ke liye reducer
+        setItems: (state, action) => {
+            state.items = action.payload;
+        },
     },
 });
 
-export const { setUserData, setCity, setAddress } = userSlice.actions;
+export const { setUserData, setCity, setAddress, setShops, setItems } = userSlice.actions;
 
 export default userSlice.reducer;

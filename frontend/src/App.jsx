@@ -6,68 +6,147 @@ import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
 import Home from "./pages/Home";
 
-// ✅ Imports for Shop & Items
-import CreateShop from "./pages/CreateShop"; 
-import AddItem from "./pages/AddItem"; 
-import EditItem from "./pages/EditItem"; // ✅ EditItem successfully imported
+// Shop & Items
+import CreateShop from "./pages/CreateShop";
+import AddItem from "./pages/AddItem";
+import EditItem from "./pages/EditItem";
 
+// Hooks
 import useGetCity from "./hooks/useGetCity";
 import useGetCurrentUser from "./hooks/useGetCurrentUser";
 import useGetMyShop from "./hooks/useGetMyShop";
+import { useGetShopsByCity } from "./hooks/useGetShopsByCity";
+import { useGetItemByCity } from "./hooks/useGetItemByCity";
 
 export const serverUrl = "http://localhost:8000";
 
 function App() {
-  const { userData } = useSelector((state) => state.user);
+  // ✅ userData aur city dono ko Redux se extract karein
+  const { userData, city } = useSelector((state) => state.user);
 
+  // Current logged-in user
   useGetCurrentUser();
+
+  // User/Admin live location
   useGetCity();
+
+  // Logged-in owner's shop
   useGetMyShop();
 
+  // Shops according to user's city
+  useGetShopsByCity();
+
+  // ✅ Items according to city (Ab yahan city defined hai, error nahi aayega)
+  useGetItemByCity(city);
+  
   return (
     <Routes>
+
+      {/* Root */}
       <Route
         path="/"
-        element={userData ? <Navigate to="/home" /> : <Navigate to="/signin" />}
+        element={
+          userData ? (
+            <Navigate to="/home" replace />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
       />
 
+      {/* Sign In */}
       <Route
         path="/signin"
-        element={userData ? <Navigate to="/home" /> : <SignIn />}
+        element={
+          userData ? (
+            <Navigate to="/home" replace />
+          ) : (
+            <SignIn />
+          )
+        }
       />
 
+      {/* Sign Up */}
       <Route
         path="/signup"
-        element={userData ? <Navigate to="/home" /> : <SignUp />}
+        element={
+          userData ? (
+            <Navigate to="/home" replace />
+          ) : (
+            <SignUp />
+          )
+        }
       />
 
+      {/* Forgot Password */}
       <Route
         path="/forgot-password"
-        element={userData ? <Navigate to="/home" /> : <ForgotPassword />}
+        element={
+          userData ? (
+            <Navigate to="/home" replace />
+          ) : (
+            <ForgotPassword />
+          )
+        }
       />
 
+      {/* Home */}
       <Route
         path="/home"
-        element={userData ? <Home /> : <Navigate to="/signin" />}
+        element={
+          userData ? (
+            <Home />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
       />
 
-      {/* ✅ Create Shop Route */}
+      {/* Create Shop - Owner/Admin only */}
       <Route
         path="/create-shop"
-        element={userData?.role === 'owner' || userData?.role === 'admin' ? <CreateShop /> : <Navigate to="/home" />}
+        element={
+          userData?.role === "owner" ||
+          userData?.role === "admin" ? (
+            <CreateShop />
+          ) : (
+            <Navigate to="/home" replace />
+          )
+        }
       />
 
-      {/* ✅ Add Item Route */}
+      {/* Add Item - Owner/Admin only */}
       <Route
         path="/add-item"
-        element={userData?.role === 'owner' || userData?.role === 'admin' ? <AddItem /> : <Navigate to="/home" />}
+        element={
+          userData?.role === "owner" ||
+          userData?.role === "admin" ? (
+            <AddItem />
+          ) : (
+            <Navigate to="/home" replace />
+          )
+        }
       />
 
-      {/* ✅ Edit Item Route (Protected with Role Check) */}
-      <Route 
-        path="/edit-item/:itemId" 
-        element={userData?.role === 'owner' || userData?.role === 'admin' ? <EditItem /> : <Navigate to="/home" />} 
+      {/* Edit Item - Owner/Admin only */}
+      <Route
+        path="/edit-item/:itemId"
+        element={
+          userData?.role === "owner" ||
+          userData?.role === "admin" ? (
+            <EditItem />
+          ) : (
+            <Navigate to="/home" replace />
+          )
+        }
       />
+
+      {/* Unknown route */}
+      <Route
+        path="*"
+        element={<Navigate to="/home" replace />}
+      />
+
     </Routes>
   );
 }

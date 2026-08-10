@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
-import { Store, UploadCloud, ArrowLeft, CheckCircle, MapPin, Building, Globe } from 'lucide-react';
+import { Store, UploadCloud, ArrowLeft, CheckCircle, MapPin, Building, Globe, Navigation } from 'lucide-react';
 import { serverUrl } from '../App';
 import { setMyShopData } from '../redux/ownerSlice';
 import useGetCity from '../hooks/useGetCity';
@@ -14,34 +14,77 @@ function CreateShop() {
   const { myShopData } = useSelector((state) => state.owner);
   const { userData, city: reduxCity, address: reduxAddress } = useSelector((state) => state.user);
 
-  // ✅ Hook call - Ab City aur Address dono Redux mein aayenge!
-  useGetCity(); 
+  // Hook call to fetch city/address if not already present
+  useGetCity();
 
   const [name, setName] = useState(myShopData?.name || "");
-  const [address, setAddress] = useState(myShopData?.address || reduxAddress || "");
-  const [city, setCity] = useState(myShopData?.city || reduxCity || "Mumbai");
-  const [state, setState] = useState(myShopData?.state || "Maharashtra");
+  const [address, setAddress] = useState(myShopData?.address || reduxAddress || userData?.address || "");
+  const [city, setCity] = useState(myShopData?.city || reduxCity || userData?.city || "Mumbai");
+  const [state, setState] = useState(myShopData?.state || userData?.state || "Maharashtra");
   const [shopCategory, setShopCategory] = useState(myShopData?.shopCategory || "");
 
   const [frontendImage, setFrontendImage] = useState(myShopData?.image || null);
   const [backendImage, setBackendImage] = useState(null);
 
   const [loading, setLoading] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [error, setError] = useState('');
 
-  // ✅ Jab Redux mein City update ho, toh Form mein set kar do
+  // ✅ Admin/User dashboard ki saved city & address se form ko sync karne ke liye
   useEffect(() => {
-    if (reduxCity && !city) {
+    if (reduxCity) {
       setCity(reduxCity);
+    } else if (userData?.city) {
+      setCity(userData.city);
     }
-  }, [reduxCity]);
 
-  // ✅ Jab Redux mein Address update ho, toh Form mein set kar do
-  useEffect(() => {
-    if (reduxAddress && !address) {
+    if (reduxAddress) {
       setAddress(reduxAddress);
+    } else if (userData?.address) {
+      setAddress(userData.address);
     }
-  }, [reduxAddress]);
+  }, [reduxCity, reduxAddress, userData]);
+
+  // ✅ Live Location Detect Button (Agar browser se GPS coordinates lene hon)
+  const detectLiveLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          if (res.data && res.data.address) {
+            const addr = res.data.address;
+            const detectedCity = addr.city || addr.town || addr.village || addr.county || "";
+            const detectedState = addr.state || "";
+            const fullRoadAddress = res.data.display_name || "";
+
+            if (detectedCity) setCity(detectedCity);
+            if (detectedState) setState(detectedState);
+            if (fullRoadAddress) setAddress(fullRoadAddress);
+            
+            alert("Live location fetched successfully!");
+          }
+        } catch (err) {
+          console.error("Error fetching location details:", err);
+          setError("Failed to fetch address from coordinates.");
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        setDetectingLocation(false);
+        alert("Unable to retrieve your location. Please allow location permissions.");
+      },
+      { enableHighAccuracy: true }
+    );
+  };
 
   const handleImage = (e) => {
     const file = e.target.files[0];
@@ -94,20 +137,31 @@ function CreateShop() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 flex justify-center items-start">
-      
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8 border border-gray-100">
         
-        <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => navigate('/home')} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-            <ArrowLeft size={20} className="text-gray-600" />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/home')} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <ArrowLeft size={20} className="text-gray-600" />
+            </button>
+            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+              <Store size={24} className="text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">Create Your Shop</h2>
+              <p className="text-sm text-gray-500">Start selling fresh seafood today!</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={detectLiveLocation}
+            disabled={detectingLocation}
+            className="flex items-center gap-1.5 px-3 py-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-semibold rounded-lg transition border border-cyan-200"
+          >
+            <Navigation size={14} className={detectingLocation ? "animate-spin" : ""} />
+            {detectingLocation ? "Detecting..." : "Detect Live Location"}
           </button>
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-            <Store size={24} className="text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Create Your Shop</h2>
-            <p className="text-sm text-gray-500">Start selling fresh seafood today!</p>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -127,7 +181,7 @@ function CreateShop() {
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Fresh Catch Aqua Mart" 
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -159,7 +213,7 @@ function CreateShop() {
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Mumbai" 
                   required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -173,7 +227,7 @@ function CreateShop() {
                   onChange={(e) => setState(e.target.value)}
                   placeholder="Maharashtra" 
                   required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -187,7 +241,7 @@ function CreateShop() {
               value={address} 
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Shop No, Street, Area" 
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -201,7 +255,7 @@ function CreateShop() {
                 value={shopCategory}
                 onChange={(e) => setShopCategory(e.target.value)}
                 placeholder="Type or select category (e.g. Fresh Fish)"
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
               <datalist id="shopCategories">
                 <option value="Fresh Fish" />
@@ -213,7 +267,7 @@ function CreateShop() {
           <button 
             type="submit" 
             disabled={loading}
-            className={`w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-blue-500/30 flex items-center justify-center gap-2 ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
+            className={`w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
           >
             {loading ? (
               <>

@@ -28,7 +28,7 @@ export const createShop = async (req, res) => {
                 owner: req.userId
             },
             { 
-                new: true,       
+                new: true,      
                 upsert: true,    
                 setDefaultsOnInsert: true 
             }
@@ -76,5 +76,24 @@ export const getMyShop = async (req, res) => {
             success: false,
             message: "Internal server error while fetching shop"
         });
+    }
+};
+
+// ✅ 3. Get Shop By City Controller
+export const getShopByCity = async (req, res) => {
+    try {
+        const { city } = req.params;
+
+        const shops = await Shop.find({
+            city: { $regex: new RegExp(`^${city}$`, "i") }
+        });
+
+        if (!shops || shops.length === 0) {
+            return res.status(404).json({ success: false, message: "No shops found in this city" });
+        }
+
+        return res.status(200).json({ success: true, shops });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: `Get shop by city error: ${error.message}` });
     }
 };
