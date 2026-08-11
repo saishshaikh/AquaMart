@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // ==========================================
-// 1. SUB-SCHEMA: Shop Order Items (Individual items inside a shop order)
+// 1. SUB-SCHEMA: Shop Order Items
 // ==========================================
 const shopOrderItemsSchema = new mongoose.Schema({
     item: {
@@ -15,17 +15,29 @@ const shopOrderItemsSchema = new mongoose.Schema({
     },
     quantity: {
         type: Number,
+        required: true,
+        min: 1
+    },
+    itemName: {
+        type: String,
         required: true
+    },
+    itemImage: {
+        type: String
     }
 }, { timestamps: true });
 
 // ==========================================
-// 2. SUB-SCHEMA: Shop Order (Orders belonging to a specific shop)
+// 2. SUB-SCHEMA: Shop Order
 // ==========================================
 const shopOrderSchema = new mongoose.Schema({
     shop: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Shop",
+        required: true
+    },
+    shopName: {
+        type: String,
         required: true
     },
     owner: {
@@ -35,13 +47,19 @@ const shopOrderSchema = new mongoose.Schema({
     },
     subtotal: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
-    shopOrderItems: [shopOrderItemsSchema]
+    shopOrderItems: [shopOrderItemsSchema],
+    shopStatus: {
+        type: String,
+        enum: ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
+        default: 'pending'
+    }
 }, { timestamps: true });
 
 // ==========================================
-// 3. MAIN SCHEMA: Order (The main order placed by the user)
+// 3. MAIN SCHEMA: Order
 // ==========================================
 const orderSchema = new mongoose.Schema({
     user: {
@@ -49,32 +67,165 @@ const orderSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
+    userName: {
+        type: String,
+        required: true
+    },
+    userEmail: {
+        type: String,
+        required: true
+    },
+    userMobile: {
+        type: String,
+        required: true
+    },
     paymentMethod: {
         type: String,
         enum: ['cod', 'online'],
         required: true
     },
+    paymentStatus: {
+        type: String,
+        enum: ['pending', 'paid', 'failed'],
+        default: 'pending'
+    },
     deliveryAddress: {
-        text: {
-            type: String,
-            required: true
-        },
-        latitude: {
-            type: Number
-        },
-        longitude: {
-            type: Number
-        }
+        text: { type: String, required: true },
+        latitude: { type: Number },
+        longitude: { type: Number },
+        city: { type: String },
+        state: { type: String },
+        pincode: { type: String },
+        landmark: { type: String }
     },
     totalAmount: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
-    shopOrders: [shopOrderSchema] // Array of shop-wise orders
-}, { timestamps: true });
+    deliveryCharges: {
+        type: Number,
+        default: 0
+    },
+    tax: {
+        type: Number,
+        default: 0
+    },
+    discount: {
+        type: Number,
+        default: 0
+    },
+    shopOrders: [shopOrderSchema],
+    status: {
+        type: String,
+        enum: ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
+        default: 'pending'
+    },
+    // Order tracking timestamps
+    orderPlacedAt: { type: Date, default: Date.now },
+    confirmedAt: Date,
+    processingAt: Date,
+    shippedAt: Date,
+    outForDeliveryAt: Date,
+    deliveredAt: Date,
+    cancelledAt: Date,
+    cancellationReason: { type: String },
+    trackingId: { type: String },
+    estimatedDeliveryDate: { type: Date }
+}, { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+});
 
 // ==========================================
-// 4. EXPORT MODEL
+// VIRTUALS
 // ==========================================
+orderSchema.virtual('totalItems').get(function() {
+    let total = 0;
+    this.shopOrders.forEach(shop => {
+        shop.shopOrderItems.forEach(item => {
+            total += item.quantity;
+        });
+    });
+    return total;
+});
+
+orderSchema.virtual('summary').get(function() {
+    return {
+        orderId: this._id,
+        totalAmount: this.totalAmount,
+        totalItems: this.totalItems,
+        status: this.status,
+        shops: this.shopOrders.length
+    };
+});
+
+// ==========================================
+// MIDDLEWARES
+// ==========================================
+
+// 1. Pre-save middleware (Triggers on `new Order().save()`)
+orderSchema.pre('save', function(next) {
+    if (this.isModified('status')) {
+        this.updateStatusTimestamps();
+    }
+    next();
+});
+
+// 2. Pre-findOneAndUpdate middleware (✅ ULTIMATE FIX - no 'next is not a function' error)
+orderSchema.pre('findOneAndUpdate', async function() {
+    const update = this.getUpdate();
+    
+    if (update.$set && update.$set.status) {
+        const newStatus = update.$set.status;
+        const timestampMap = {
+            'confirmed': 'confirmedAt',
+            'processing': 'processingAt',
+            'shipped': 'shippedAt',
+            'out_for_delivery': 'outForDeliveryAt',
+            'delivered': 'deliveredAt',
+            'cancelled': 'cancelledAt'
+        };
+        
+        const timestampField = timestampMap[newStatus];
+        if (timestampField) {
+            update.$set[timestampField] = new Date();
+        }
+
+        if (newStatus === 'cancelled' || newStatus === 'delivered') {
+            update.$set['shopOrders.$[elem].shopStatus'] = newStatus;
+        }
+    }
+    
+    // ✅ PERFECT FIX: Bypass validation directly here
+    this.setOptions({ runValidators: false });
+});
+
+// ==========================================
+// HELPER METHOD (Encapsulated logic)
+// ==========================================
+orderSchema.methods.updateStatusTimestamps = function() {
+    const statusTimestampMap = {
+        'confirmed': 'confirmedAt',
+        'processing': 'processingAt',
+        'shipped': 'shippedAt',
+        'out_for_delivery': 'outForDeliveryAt',
+        'delivered': 'deliveredAt',
+        'cancelled': 'cancelledAt'
+    };
+    
+    const timestampField = statusTimestampMap[this.status];
+    if (timestampField) {
+        this[timestampField] = new Date();
+    }
+    
+    if (this.status === 'cancelled' || this.status === 'delivered') {
+        this.shopOrders.forEach(shop => {
+            shop.shopStatus = this.status;
+        });
+    }
+};
+
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

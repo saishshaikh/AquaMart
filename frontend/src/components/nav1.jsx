@@ -10,7 +10,7 @@ import { setUserData } from '../redux/userSlice';
 import { serverUrl } from '../App';
 
 function Nav1() {
-  const { userData, city, cartitems } = useSelector((state) => state.user); // ✅ cartitems bhi nikaala
+  const { userData, city, cartitems } = useSelector((state) => state.user);
   const { myShopData } = useSelector((state) => state.owner); 
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -23,10 +23,10 @@ function Nav1() {
   const rightRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
-  // ✅ Cart ki total quantity calculate karo
+  // Cart ki total quantity calculate karo
   const totalItemCount = cartitems?.reduce((total, item) => total + (item.quantity || 1), 0) || 0;
 
-  // ✅ STRICT LOGIC (Unchanged)
+  // STRICT LOGIC (Unchanged)
   const showAddButton = (userData?.role === 'admin' || userData?.role === 'owner') && myShopData !== null && myShopData !== undefined;
   const showAdminLayout = userData?.role === 'admin' || userData?.role === 'owner';
 
@@ -108,6 +108,7 @@ function Nav1() {
                   <Plus size={16} /> Add Catch
                 </button>
               )}
+              {/* My Orders button in admin layout */}
               <button 
                 onClick={() => navigate("/my-orders")}
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-slate-200 hover:bg-white/10 transition-colors text-xs sm:text-sm font-semibold"
@@ -136,7 +137,7 @@ function Nav1() {
         {/* RIGHT: ICONS & USER MENU */}
         <div ref={rightRef} className="flex items-center gap-1.5 sm:gap-3">
           
-          {/* 🟢 FIXED: CART ICON WITH NAVIGATION AND BADGE */}
+          {/* CART ICON WITH NAVIGATION AND BADGE */}
           {!showAdminLayout && (
             <button 
               onClick={() => navigate("/cart")}
@@ -151,9 +152,14 @@ function Nav1() {
             </button>
           )}
           
-          <button className="relative p-2.5 sm:p-3 rounded-full hover:bg-white/10 transition-colors text-slate-200 hidden sm:block">
+          {/* 🔔 BELL ICON - NOW OPENS MY ORDERS */}
+          <button 
+            onClick={() => navigate("/my-orders")}
+            className="relative p-2.5 sm:p-3 rounded-full hover:bg-white/10 transition-colors text-slate-200 group"
+          >
             <Bell size={22} className="sm:w-6 sm:h-6" />
-            <span className="absolute top-2.5 right-3.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
+            {/* Optional: Show notification badge for order updates */}
+            <span className="absolute top-2.5 right-3.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-950 animate-pulse"></span>
           </button>
 
           {/* Desktop User Info & Avatar */}
@@ -209,6 +215,14 @@ function Nav1() {
                 <Search size={18} className="text-cyan-500 flex-shrink-0" />
                 <input type="text" placeholder="Search seafood..." className="bg-transparent outline-none w-full ml-3 text-white text-xs sm:text-sm placeholder:text-slate-500" />
               </div>
+              {/* Mobile My Orders Button (using Bell icon style) */}
+              <button 
+                onClick={() => { navigate("/my-orders"); setIsMenuOpen(false); }}
+                className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white/5 rounded-2xl border border-white/10 text-slate-200 hover:bg-white/10 transition-colors"
+              >
+                <Bell size={18} className="text-cyan-400" />
+                <span className="text-sm font-semibold">My Orders</span>
+              </button>
               <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 rounded-full border border-white/10">
                  <MapPin size={16} className="text-cyan-400 flex-shrink-0" /> 
                  <span className="text-xs sm:text-sm text-slate-200 font-medium truncate">

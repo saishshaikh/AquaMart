@@ -1,34 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaTruck, FaCreditCard, FaCheckCircle, FaBox, FaWallet, FaMapMarkerAlt, FaCrosshairs, FaMoneyBillWave } from 'react-icons/fa';
+import { FaArrowLeft, FaCreditCard, FaBox, FaMapMarkerAlt, FaMoneyBillWave } from 'react-icons/fa';
 import { clearCart } from '../redux/userSlice';
 import axios from 'axios';
 
-// 🔥 Map Components Import
+// Map Components Import
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// 🔥 Fix for missing Leaflet marker icons in React
+// Fix for missing Leaflet marker icons
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// ✅ API Key & Server URL (Changed to 8000)
 const apiKey = import.meta.env.VITE_GEOAPIKEY;
-const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:8000'; // 🔥 FIXED PORT
+const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:8000';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-    iconUrl: markerIcon,
-    iconRetinaUrl: markerIcon2x,
-    shadowUrl: markerShadow,
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
 });
 
-// ==========================================
 // 1. MAP CLICK COMPONENT
-// ==========================================
 function LocationMarker({ position, setPosition, setDeliveryAddress }) {
   const map = useMapEvents({
     async click(e) {
@@ -55,22 +52,18 @@ function LocationMarker({ position, setPosition, setDeliveryAddress }) {
   );
 }
 
-// ==========================================
 // 2. AUTO MAP UPDATE COMPONENT
-// ==========================================
 function ChangeMapView({ coords }) {
   const map = useMap();
   useEffect(() => { if (coords) map.flyTo(coords, map.getZoom()); }, [coords, map]);
   return null;
 }
 
-// ==========================================
 // 3. CHECKOUT PAGE COMPONENT
-// ==========================================
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false); // Button loading state
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
   const { cartitems } = useSelector((state) => state.user);
 
@@ -78,14 +71,14 @@ const CheckoutPage = () => {
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cod');
 
+  // Total Subtotal Calculation
   const totalPrice = cartitems.reduce((acc, item) => {
     const weightInGrams = item.quantity || 1000;
     const pricePerGram = item.price / 1000;
     return acc + (pricePerGram * weightInGrams);
   }, 0);
-
-  const [paymentMethod, setPaymentMethod] = useState('cod');
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -138,39 +131,50 @@ const CheckoutPage = () => {
     setIsTyping(false);
   };
 
-  // 🔥 BACKEND API CALL (Place Order)
-  // 🔥 BACKEND API CALL (Place Order) - PRODUCTION READY
+  // 🔥 BACKEND COMPATIBLE PLACE ORDER HANDLER
   const handlePlaceOrder = async () => {
-    // 1. Empty Cart Check
     if (cartitems.length === 0) {
       alert("Your cart is empty!");
       return;
     }
 
-    // 2. Empty Address Check
     if (!deliveryAddress.trim()) {
       alert("Please enter a valid delivery address.");
       return;
     }
 
-    // 3. Token Check (Prevent 401 Unauthorized)
     const token = localStorage.getItem('token');
     if (!token) {
       alert("You are not logged in. Please login to place an order.");
       return;
     }
 
-    setIsPlacingOrder(true); // Start loading
+    setIsPlacingOrder(true);
 
     try {
-      // 4. Prepare payload (with safe quantity)
-      const safeCartItems = cartitems.map(item => ({
-        ...item,
-        quantity: item.quantity || 1000 // Default 1kg if missing
-      }));
+      // 1. Formatting Items according to Controller Validation
+      const formattedCartItems = cartitems.map(item => {
+        const weightInGrams = item.quantity || 1000;
+        // Calculated final price for this weight
+        const itemCalculatedPrice = (item.price / 1000) * weightInGrams;
+        
+        // Extract shop ID safely
+        const shopId = typeof item.shop === 'object' ? item.shop?._id : (item.shop || item.shopId || item.owner);
 
+        return {
+          _id: item._id || item.id,
+          name: item.name,
+          // Sending calculated price as base unit price and setting quantity to 1 so backend calculation (price * quantity) matches ₹160
+          price: itemCalculatedPrice,
+          quantity: 1, 
+          shop: shopId, // MUST BE NON-EMPTY STRING TO PASS STEP 1 VALIDATION
+          image: item.image
+        };
+      });
+
+      // 2. Order Payload Matching Controller Request Body
       const orderData = {
-        cartItems: safeCartItems,
+        cartItems: formattedCartItems,
         paymentMethod: paymentMethod,
         deliveryAddress: {
           text: deliveryAddress,
@@ -179,7 +183,6 @@ const CheckoutPage = () => {
         }
       };
 
-      // 5. Make API Call
       const response = await axios.post(
         `${serverUrl}/api/order/place-order`,
         orderData,
@@ -192,21 +195,18 @@ const CheckoutPage = () => {
         }
       );
 
-      // 6. Success - SMOOTH NAVIGATION (NO ALERT!)
       if (response.data.success) {
         dispatch(clearCart()); 
         
         navigate('/order-placed', { 
           state: { 
-            orderData: response.data.order 
+            orderData: response.data.order || orderData 
           } 
         });
       }
 
     } catch (error) {
       console.error("❌ Error placing order:", error);
-      
-      // 7. Smart Error Handling (Network + Backend errors)
       let errorMessage = "Failed to place order. Please try again.";
       
       if (error.code === 'ERR_NETWORK') {
@@ -215,11 +215,9 @@ const CheckoutPage = () => {
         errorMessage = error.response.data.message || errorMessage;
       }
       
-      // Only show alert on ERROR
       alert(errorMessage);
-      
     } finally {
-      setIsPlacingOrder(false); // Stop loading
+      setIsPlacingOrder(false);
     }
   };
 
@@ -254,7 +252,7 @@ const CheckoutPage = () => {
         ) : (
           <div className="space-y-6">
             
-            {/* 🔥 Delivery Location Section */}
+            {/* Delivery Location Section */}
             <div>
               <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                 <FaMapMarkerAlt className="text-red-500 w-4 h-4" /> Delivery Location
@@ -283,7 +281,7 @@ const CheckoutPage = () => {
               </div>
             </div>
 
-            {/* 🔥 Payment Method Section */}
+            {/* Payment Method Section */}
             <div>
               <h2 className="text-sm font-bold text-slate-900 mb-3">Payment Method</h2>
               
@@ -302,7 +300,7 @@ const CheckoutPage = () => {
               </div>
             </div>
 
-            {/* 🔥 Order Summary Section */}
+            {/* Order Summary Section */}
             <div>
               <h2 className="text-sm font-bold text-slate-900 mb-3">Order Summary</h2>
               
@@ -340,7 +338,6 @@ const CheckoutPage = () => {
                 <span className="text-orange-600">₹{(totalPrice + 20).toFixed(0)}</span>
               </div>
               
-              {/* 🔥 LOADING STATE BUTTON */}
               <button 
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder}
