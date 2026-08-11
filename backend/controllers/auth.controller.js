@@ -61,7 +61,7 @@ const signup = async (req, res) => {
         // Set cookie
         res.cookie("token", token, {
             secure: process.env.NODE_ENV === 'production',
-            sameSite: "lax", // ✅ "strict" ki jagah "lax" better hai
+            sameSite: "lax", 
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             httpOnly: true,
         });
@@ -140,7 +140,7 @@ const signin = async (req, res) => {
             message: "Login successful",
             user: {
                 id: user._id,
-                fullName: user.fullName, // ✅ FIXED: "fullName" use karo
+                fullName: user.fullName,
                 email: user.email,
                 mobile: user.mobile,
                 role: user.role
@@ -407,6 +407,7 @@ const googleAuth = async (req, res) => {
         mobile: user.mobile,
         role: user.role,
       },
+      token // ✅ FIXED: Token yahan add kar diya
     });
   } catch (error) {
     console.error("Google Auth Error:", error);
@@ -417,6 +418,7 @@ const googleAuth = async (req, res) => {
     });
   }
 };
+
 // ============================================
 // SECTION 4: EXPORT CONTROLLERS
 // ============================================

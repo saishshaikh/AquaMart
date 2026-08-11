@@ -11,6 +11,14 @@ import CreateShop from "./pages/CreateShop";
 import AddItem from "./pages/AddItem";
 import EditItem from "./pages/EditItem";
 
+// Cart & Checkout
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage"; 
+
+// Order Placed & My Orders
+import OrderPlaced from "./pages/OrderPlaced";
+import MyOrders from "./pages/MyOrders"; // ✅ Import MyOrders
+
 // Hooks
 import useGetCity from "./hooks/useGetCity";
 import useGetCurrentUser from "./hooks/useGetCurrentUser";
@@ -21,22 +29,12 @@ import { useGetItemByCity } from "./hooks/useGetItemByCity";
 export const serverUrl = "http://localhost:8000";
 
 function App() {
-  // ✅ userData aur city dono ko Redux se extract karein
   const { userData, city } = useSelector((state) => state.user);
 
-  // Current logged-in user
   useGetCurrentUser();
-
-  // User/Admin live location
   useGetCity();
-
-  // Logged-in owner's shop
   useGetMyShop();
-
-  // Shops according to user's city
   useGetShopsByCity();
-
-  // ✅ Items according to city (Ab yahan city defined hai, error nahi aayega)
   useGetItemByCity(city);
   
   return (
@@ -96,6 +94,54 @@ function App() {
         element={
           userData ? (
             <Home />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
+      />
+
+      {/* Cart Page */}
+      <Route
+        path="/cart"
+        element={
+          userData ? (
+            <CartPage />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
+      />
+
+      {/* Checkout Page */}
+      <Route
+        path="/checkout"
+        element={
+          userData ? (
+            <CheckoutPage />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
+      />
+
+      {/* Order Placed Page */}
+      <Route
+        path="/order-placed"
+        element={
+          userData ? (
+            <OrderPlaced />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
+      />
+
+      {/* ✅ NEW: My Orders Page (For Order Tracking) */}
+      <Route
+        path="/my-orders"
+        element={
+          userData ? (
+            <MyOrders />
           ) : (
             <Navigate to="/signin" replace />
           )

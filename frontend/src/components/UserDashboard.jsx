@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { gsap } from "gsap";
 import { MapPin, Navigation, Star, Clock, ShieldCheck, Store, Utensils, Tag } from "lucide-react";
 
 import { categories } from "../data/Category";
 import { useGetShopsByCity } from "../hooks/useGetShopsByCity"; 
-import { useGetItemByCity } from "../hooks/useGetItemByCity"; // ✅ Import item hook
+import { useGetItemByCity } from "../hooks/useGetItemByCity"; 
+
+// ✅ addToCart aur removeFromCart dono import kiye
+import { addToCart, removeFromCart } from "../redux/userSlice.js"; 
 
 const UserDashboard = () => {
   // =========================
@@ -21,7 +24,9 @@ const UserDashboard = () => {
   // =========================
   // Redux & State
   // =========================
-  const { city, address, shops, items } = useSelector((state) => state.user); // ✅ items extract kiya
+  const dispatch = useDispatch();
+  // ✅ items aur cartitems dono nikaale
+  const { city, address, shops, items, cartitems } = useSelector((state) => state.user);
 
   const [selectedLocation, setSelectedLocation] = useState(
     city || localStorage.getItem("userLocation") || "Bhiwandi"
@@ -31,9 +36,8 @@ const UserDashboard = () => {
     address || localStorage.getItem("userAddress") || ""
   );
 
-  // ✅ Call custom hooks to fetch shops & items by city automatically
   useGetShopsByCity(selectedLocation);
-  useGetItemByCity(selectedLocation); // ✅ Pass selectedLocation
+  useGetItemByCity(selectedLocation);
 
   // Sync Redux state and localStorage
   useEffect(() => {
@@ -162,7 +166,7 @@ const UserDashboard = () => {
           </div>
         </section>
 
-        {/* DYNAMIC EXACT CURRENT CITY HEADING FOR SHOPS */}
+        {/* SHOPS SECTION */}
         <div className="mt-8 mb-6 flex items-center gap-2">
           <MapPin className="w-6 h-6 text-cyan-600" />
           <h3
@@ -173,7 +177,6 @@ const UserDashboard = () => {
           </h3>
         </div>
 
-        {/* REAL SHOPS GRID FROM REDUX */}
         {shops && shops.length > 0 ? (
           <div 
             ref={shopsGridRef}
@@ -191,13 +194,11 @@ const UserDashboard = () => {
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-80" />
-
                   <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md text-slate-800 text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 shadow">
                     <MapPin size={12} className="text-cyan-600" />
                     {shop.city}
                   </div>
                 </div>
-
                 <div className="p-4 flex flex-col flex-grow justify-between">
                   <div>
                     <div className="flex items-start justify-between gap-1 mb-1">
@@ -209,12 +210,10 @@ const UserDashboard = () => {
                         {shop.rating || "4.5"}
                       </div>
                     </div>
-
                     <p className="text-xs text-slate-500 mb-3 font-medium">
                       {shop.shopCategory || "Fresh Seafood"}
                     </p>
                   </div>
-
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
                     <div className="flex items-center gap-1">
                       <Clock size={13} className="text-cyan-600" />
@@ -240,7 +239,7 @@ const UserDashboard = () => {
         )}
 
         {/* ================================================= */}
-        {/* ✅ SUGGESTED BEST ITEMS SECTION (WITH BEST QUOTE) */}
+        {/* ✅ SUGGESTED BEST ITEMS SECTION (ADD/REMOVE BUTTON) */}
         {/* ================================================= */}
         <div className="mt-12 mb-6 flex items-center gap-2">
           <Utensils className="w-6 h-6 text-cyan-600" />
@@ -254,58 +253,90 @@ const UserDashboard = () => {
 
         {items && items.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {items.map((item) => (
-              <div
-                key={item._id}
-                className="group bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1.5"
-              >
-                <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-                  <img
-                    src={item.image || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=600"}
-                    alt={item.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-80" />
+            {items.map((item) => {
+              
+              // ✅ Check karo ki ye item cart mein hai ya nahi
+              const isItemInCart = cartitems?.some(
+                (cartItem) => (cartItem._id || cartItem.id) === (item._id || item.id)
+              );
 
-                  <div className="absolute top-3 right-3 bg-cyan-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
-                    Best Catch 🌟
+              const handleCartToggle = (e) => {
+                e.stopPropagation();
+                
+                const safeData = {
+                  ...item,
+                  _id: item._id || item.id || `item_${Date.now()}_${Math.random()}`
+                };
+
+                if (isItemInCart) {
+                  console.log("🔴 Removing Item from Cart:", safeData);
+                  dispatch(removeFromCart(safeData));
+                } else {
+                  console.log("🟢 Adding Item to Cart:", safeData);
+                  dispatch(addToCart(safeData));
+                }
+              };
+
+              return (
+                <div
+                  key={item._id}
+                  className="group bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1.5"
+                >
+                  <div className="relative h-48 w-full overflow-hidden bg-slate-100">
+                    <img
+                      src={item.image || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=600"}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-80" />
+                    <div className="absolute top-3 right-3 bg-cyan-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
+                      Best Catch 🌟
+                    </div>
+                    <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md text-slate-800 text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 shadow">
+                      <Tag size={12} className="text-cyan-600" />
+                      {item.category || "Seafood"}
+                    </div>
                   </div>
 
-                  <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md text-slate-800 text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 shadow">
-                    <Tag size={12} className="text-cyan-600" />
-                    {item.category || "Seafood"}
-                  </div>
-                </div>
-
-                <div className="p-4 flex flex-col flex-grow justify-between">
-                  <div>
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <h4 className="text-base font-bold text-slate-800 group-hover:text-cyan-600 transition-colors line-clamp-1">
-                        {item.name}
-                      </h4>
-                      <div className="text-cyan-700 font-extrabold text-sm shrink-0">
-                        ₹{item.price}
+                  <div className="p-4 flex flex-col flex-grow justify-between">
+                    <div>
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <h4 className="text-base font-bold text-slate-800 group-hover:text-cyan-600 transition-colors line-clamp-1">
+                          {item.name}
+                        </h4>
+                        <div className="text-cyan-700 font-extrabold text-sm shrink-0">
+                          ₹{item.price}
+                        </div>
                       </div>
+                      <p className="text-xs text-slate-500 italic mb-3">
+                        "Freshly caught, premium quality straight to your kitchen!"
+                      </p>
                     </div>
 
-                    {/* Attractive Quote for User */}
-                    <p className="text-xs text-slate-500 italic mb-3">
-                      "Freshly caught, premium quality straight to your kitchen!"
-                    </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
-                    <div className="flex items-center gap-1 text-slate-500">
-                      <Clock size={13} className="text-cyan-600" />
-                      <span>Express Delivery</span>
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
+                      <div className="flex items-center gap-1 text-slate-500">
+                        <Clock size={13} className="text-cyan-600" />
+                        <span>Express Delivery</span>
+                      </div>
+                      
+                      {/* ✅ TOGGLE BUTTON (Add / Remove) */}
+                      <button 
+                        type="button"
+                        onClick={handleCartToggle}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm cursor-pointer transition-colors
+                          ${isItemInCart 
+                            ? 'bg-red-50 text-red-700 hover:bg-red-600 hover:text-white' 
+                            : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white' 
+                          }
+                        `}
+                      >
+                        {isItemInCart ? "Remove" : "Add to Cart"}
+                      </button>
                     </div>
-                    <button className="bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white transition-colors px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm">
-                      Add to Cart
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-white rounded-2xl p-10 text-center border border-slate-200 shadow-sm max-w-md mx-auto">
@@ -322,4 +353,5 @@ const UserDashboard = () => {
   );
 };
 
+// ✅ YEH LAST LINE BOHOT ZAROORI HAI (ERROR FIX)
 export default UserDashboard;

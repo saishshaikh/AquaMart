@@ -155,6 +155,10 @@ const SignUp = () => {
       );
 
       dispatch(setUserData(data.user));
+      
+      // ✅ 🚀 SAVE TOKEN TO LOCAL STORAGE (Fix for Google Signup)
+      localStorage.setItem('token', data.token);
+      
       navigate("/home");
 
     } catch (error) {

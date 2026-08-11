@@ -51,7 +51,11 @@ const SignIn = () => {
       );
 
       // ✅ Dispatch user data to Redux
-dispatch(setUserData(result.data.user));      
+      dispatch(setUserData(result.data.user));
+
+      // 🚀 ✅ SAVE TOKEN TO LOCAL STORAGE (FIX)
+      localStorage.setItem('token', result.data.token);
+      
       console.log("Login Success:", result.data);
       navigate("/");
       
@@ -87,7 +91,11 @@ dispatch(setUserData(result.data.user));
       );
 
       // ✅ Dispatch user data to Redux
-dispatch(setUserData(response.data.user));      
+      dispatch(setUserData(response.data.user));
+
+      // 🚀 ✅ SAVE TOKEN TO LOCAL STORAGE (FIX)
+      localStorage.setItem('token', response.data.token);
+      
       console.log("Login Success:", response.data);
       navigate("/home"); // ✅ Home page par jao
 

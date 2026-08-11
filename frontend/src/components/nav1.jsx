@@ -10,7 +10,7 @@ import { setUserData } from '../redux/userSlice';
 import { serverUrl } from '../App';
 
 function Nav1() {
-  const { userData, city } = useSelector((state) => state.user);
+  const { userData, city, cartitems } = useSelector((state) => state.user); // ✅ cartitems bhi nikaala
   const { myShopData } = useSelector((state) => state.owner); 
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,6 +22,9 @@ function Nav1() {
   const centerSectionRef = useRef(null);
   const rightRef = useRef(null);
   const mobileMenuRef = useRef(null);
+
+  // ✅ Cart ki total quantity calculate karo
+  const totalItemCount = cartitems?.reduce((total, item) => total + (item.quantity || 1), 0) || 0;
 
   // ✅ STRICT LOGIC (Unchanged)
   const showAddButton = (userData?.role === 'admin' || userData?.role === 'owner') && myShopData !== null && myShopData !== undefined;
@@ -74,7 +77,7 @@ function Nav1() {
   return (
     <header className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-xl border-b border-white/10 shadow-2xl shadow-black/20">
       
-      {/* Main Container - Optimized max-w and responsive padding */}
+      {/* Main Container */}
       <div className="max-w-[1400px] mx-auto h-[70px] sm:h-[75px] flex items-center justify-between px-3 sm:px-6 lg:px-8">
 
         {/* LEFT: LOGO */}
@@ -93,7 +96,7 @@ function Nav1() {
           </div>
         </div>
 
-        {/* CENTER: Desktop Navigation (Dynamic based on role) */}
+        {/* CENTER: Desktop Navigation */}
         <div ref={centerSectionRef} className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2">
           {showAdminLayout ? (
             <div className="flex items-center gap-2.5 bg-white/5 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full shadow-inner">
@@ -133,10 +136,18 @@ function Nav1() {
         {/* RIGHT: ICONS & USER MENU */}
         <div ref={rightRef} className="flex items-center gap-1.5 sm:gap-3">
           
+          {/* 🟢 FIXED: CART ICON WITH NAVIGATION AND BADGE */}
           {!showAdminLayout && (
-            <button className="relative p-2.5 sm:p-3 rounded-full hover:bg-white/10 transition-colors text-slate-200 group">
+            <button 
+              onClick={() => navigate("/cart")}
+              className="relative p-2.5 sm:p-3 rounded-full hover:bg-white/10 transition-colors text-slate-200 group"
+            >
               <ShoppingCart size={22} className="sm:w-6 sm:h-6" />
-              <span className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full text-[10px] sm:text-[11px] flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">0</span>
+              {totalItemCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full text-[10px] sm:text-[11px] flex items-center justify-center text-white font-bold shadow-md group-hover:scale-110 transition-transform">
+                  {totalItemCount}
+                </span>
+              )}
             </button>
           )}
           
