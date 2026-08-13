@@ -1,72 +1,66 @@
-import { useSelector, useDispatch } from "react-redux"; 
-import { useEffect } from "react";
+import { useSelector } from "react-redux";
 import Nav1 from "../components/Nav1";
 import UserDashboard from "../components/UserDashboard";
 import DeliveryDashboard from "../components/DeliveryDashboard";
 import AdminDashboard from "../components/AdminDashboard";
-import useGetCurrentUser from "../hooks/useGetCurrentUser"; 
-import { setUserData } from "../redux/userSlice.js"; 
+import useGetCurrentUser from "../hooks/useGetCurrentUser";
 
 function Home() {
-  const dispatch = useDispatch();
+  const { loading } = useGetCurrentUser();
   const { userData } = useSelector((state) => state.user);
-  const { user } = useGetCurrentUser();
 
-  // Refresh handle karo
-  useEffect(() => {
-    if (user && !userData) {
-      dispatch(setUserData(user));
-    }
-  }, [user, userData, dispatch]);
-
-  // Loading state
-  if (!userData && !user) {
+  // 1. Loading State Screen
+  if (loading && !userData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white text-xl">
-        Loading...
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+          <p>Loading Dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  // Role extract karo
-  const currentUser = userData || user;
-  
-  // 🟢 FIX 1: Agar role undefined aaya toh bhi error na aaye!
-  let role = currentUser?.role?.trim()?.toLowerCase();
-  if (!role) role = "user"; // Default role set kar diya
+  // 2. Safe Role Normalize
+  const role = userData?.role?.trim()?.toLowerCase() || "user";
 
-  console.log("Final Role =", role);
-
+  // 3. Conditional Rendering based on Role
   switch (role) {
     case "user":
       return (
-        <>
+        <div className="min-h-screen bg-[#020617]">
           <Nav1 />
           <UserDashboard />
-        </>
+        </div>
       );
 
     case "admin":
+    case "owner":
       return (
-        <>
+        <div className="min-h-screen bg-[#020617]">
           <Nav1 />
           <AdminDashboard />
-        </>
+        </div>
       );
 
     case "delivery":
+    case "delivery_boy":
+    case "deliveryboy":
       return (
-        <>
+        <div className="min-h-screen bg-[#020617]">
+          {/* Active delivery view */}
           <Nav1 />
           <DeliveryDashboard />
-        </>
+        </div>
       );
 
     default:
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white">
-          <h1 className="text-3xl text-red-500">Unauthorized User</h1>
-          <p className="mt-3">Role : {currentUser?.role || "Unknown"}</p>
+          <h1 className="text-3xl text-red-500 font-bold">Unauthorized User</h1>
+          <p className="mt-3 text-slate-400">
+            Role: <span className="text-cyan-400">{userData?.role || "Unknown"}</span>
+          </p>
         </div>
       );
   }

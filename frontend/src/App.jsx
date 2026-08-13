@@ -15,9 +15,10 @@ import EditItem from "./pages/EditItem";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage"; 
 
-// Order Placed & My Orders
+// Order Pages
 import OrderPlaced from "./pages/OrderPlaced";
-import MyOrders from "./pages/MyOrders"; // ✅ Import MyOrders
+import MyOrders from "./pages/MyOrders";
+import OwnerOrders from "./pages/OwnerOrders"; // ✅ CORRECT IMPORT
 
 // Hooks
 import useGetCity from "./hooks/useGetCity";
@@ -136,7 +137,7 @@ function App() {
         }
       />
 
-      {/* ✅ NEW: My Orders Page (For Order Tracking) */}
+      {/* My Orders Page (For Normal User Tracking) */}
       <Route
         path="/my-orders"
         element={
@@ -144,6 +145,18 @@ function App() {
             <MyOrders />
           ) : (
             <Navigate to="/signin" replace />
+          )
+        }
+      />
+
+      {/* ✅ Owner Orders Page (For Admin/Owner Tracking) - URL is /shop-orders */}
+      <Route
+        path="/shop-orders"
+        element={
+          userData?.role === "admin" || userData?.role === "owner" ? (
+            <OwnerOrders /> // ✅ Using OwnerOrders component
+          ) : (
+            <Navigate to="/home" replace />
           )
         }
       />

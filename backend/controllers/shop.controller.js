@@ -1,13 +1,14 @@
 import Shop from "../models/shop.model.js";
 import uploadOnImageKit from "../utils/imagekitUpload.js";
 
-// ✅ 1. Create or Update Shop Controller
+// ==========================================
+// 1. CREATE OR UPDATE SHOP
+// ==========================================
 export const createShop = async (req, res) => {
     try {
         const { name, city, state, address, shopCategory } = req.body;
         let image;
 
-        // Check if image is uploaded
         if (req.file) {
             image = await uploadOnImageKit(req.file.path);
             if (!image) {
@@ -15,7 +16,6 @@ export const createShop = async (req, res) => {
             }
         }
 
-        // Find and update or insert shop
         const shop = await Shop.findOneAndUpdate(
             { owner: req.userId }, 
             {
@@ -34,7 +34,6 @@ export const createShop = async (req, res) => {
             }
         );
 
-        // Populate owner details
         await shop.populate("owner");
 
         return res.status(201).json({
@@ -49,10 +48,11 @@ export const createShop = async (req, res) => {
     }
 };
 
-// ✅ 2. Get My Shop Controller (With Items Populated)
+// ==========================================
+// 2. GET SINGLE SHOP (For Owner Dashboard)
+// ==========================================
 export const getMyShop = async (req, res) => {
     try {
-        // Populating both owner and items so frontend gets the full item objects (name, price, etc.)
         const shop = await Shop.findOne({ owner: req.userId })
             .populate("owner")
             .populate("items");
@@ -79,7 +79,34 @@ export const getMyShop = async (req, res) => {
     }
 };
 
-// ✅ 3. Get Shop By City Controller
+// ==========================================
+// ✅ 3. GET ALL SHOPS (For Admin Dashboard)
+// ==========================================
+export const getAllShops = async (req, res) => { 
+    try {
+        const ownerId = req.userId;
+
+        const shops = await Shop.find({ owner: ownerId })
+            .populate("items")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            shops
+        });
+
+    } catch (error) {
+        console.error("❌ Error fetching all shops:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch shops. Please try again."
+        });
+    }
+};
+
+// ==========================================
+// 4. GET SHOPS BY CITY
+// ==========================================
 export const getShopByCity = async (req, res) => {
     try {
         const { city } = req.params;

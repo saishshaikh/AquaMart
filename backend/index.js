@@ -10,7 +10,8 @@ import userRouter from "./routes/user.route.js";
 // ✅ IMPORT ROUTES
 import shopRoutes from "./routes/shop.route.js";
 import itemRouter from "./routes/item.route.js";
-import orderRouter from "./routes/order.routes.js"; // ✅ NEW ORDER ROUTE ADDED
+import orderRouter from "./routes/order.routes.js";
+import deliveryRouter from "./routes/deliveryBoy.routes.js"; // ✅ NEW: Delivery Boy Routes Imported
 
 dotenv.config();
 
@@ -31,7 +32,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/shop", shopRoutes);
 app.use("/api/item", itemRouter);
-app.use("/api/order", orderRouter); // ✅ ORDER ROUTES REGISTERED HERE
+app.use("/api/order", orderRouter);
+app.use("/api/delivery", deliveryRouter); // ✅ NEW: Delivery Routes Registered Here
 
 // Test route
 app.get("/", (req, res) => {

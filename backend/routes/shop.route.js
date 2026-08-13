@@ -1,18 +1,13 @@
 import express from "express";
-// Controllers import karein (getShopByCity ko bhi import kiya hai)
-import { createShop, getMyShop, getShopByCity } from "../controllers/shop.controller.js"; 
+import { createShop, getMyShop, getShopByCity, getAllShops } from "../controllers/shop.controller.js";
+import { upload } from "../middlewares/multer.js"; // ✅ FIXED: .middleware removed, just .js
 import isAuth from "../middlewares/isAuth.js";
-import { upload } from "../middlewares/multer.js";
 
-const shopRouter = express.Router();
+const router = express.Router();
 
-// ✅ 1. Shop Create / Edit karne ka route (POST with Image)
-shopRouter.post("/create-shop", isAuth, upload.single("image"), createShop);
+router.post("/create-shop", isAuth, upload.single("image"), createShop);
+router.get("/my-shop", isAuth, getMyShop);
+router.get("/city/:city", getShopByCity);
+router.get("/all-shops", isAuth, getAllShops);
 
-// ✅ 2. Logged-in user ki shop fetch karne ka route (GET)
-shopRouter.get("/my-shop", isAuth, getMyShop);
-
-// ✅ 3. City ke mutabiq shops fetch karne ka route (GET)
-shopRouter.get("/get-by-city/:city", getShopByCity);
-
-export default shopRouter;
+export default router;

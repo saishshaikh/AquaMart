@@ -22,24 +22,27 @@ export const getUser = async (req, res) => {
     }
 
     console.log("✅ User found:", user.email);
-    console.log("✅ User role:", user.role); // Debug log
-    console.log("✅ Full user object:", user); // Debug log
-    
+    console.log("✅ User role:", user.role);
+    console.log("✅ Full user object:", user);
+
     // Ensure all fields are included, set defaults if missing
     const userData = {
       id: user._id,
       fullName: user.fullName,
       email: user.email,
       mobile: user.mobile,
-      role: user.role || 'user', // Set default if role is missing
+      role: user.role || 'user',
       city: user.city || '',
+      // 🚀 DELIVERY BOY FIELDS
+      activeOrderId: user.activeOrderId || null,
+      deliveryStatus: user.deliveryStatus || 'available',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
     
     return res.status(200).json({
       success: true,
-      user: userData, // Send the structured user data
+      user: userData,
     });
 
   } catch (error) {
@@ -93,6 +96,9 @@ export const updateCity = async (req, res) => {
       mobile: updatedUser.mobile,
       role: updatedUser.role || 'user',
       city: updatedUser.city || '',
+      // 🚀 DELIVERY BOY FIELDS
+      activeOrderId: updatedUser.activeOrderId || null,
+      deliveryStatus: updatedUser.deliveryStatus || 'available',
     };
 
     return res.status(200).json({

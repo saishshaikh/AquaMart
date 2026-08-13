@@ -31,7 +31,6 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Password Strength Checker
   const getPasswordStrength = (pass) => {
     if (!pass) return { label: '', color: 'bg-slate-800', width: '0%' };
     if (pass.length < 6) return { label: 'Weak', color: 'bg-rose-500', width: '33%' };
@@ -55,39 +54,27 @@ const SignUp = () => {
     setTimeout(() => setRipple(null), 1000);
   };
 
+  // Helper function to navigate based on role
+  const handleRoleRedirect = (userRole) => {
+    const normalizedRole = userRole?.trim()?.toLowerCase();
+    if (normalizedRole === 'delivery' || normalizedRole === 'delivery_boy') {
+      navigate('/home'); // Home component renders DeliveryDashboard automatically
+    } else {
+      navigate('/home');
+    }
+  };
+
   // Handle SignUp
   const HandleSignUp = async (e) => {
     e.preventDefault();
     
-    // Validation
-    if (!formData.fullName.trim()) {
-      setError('Full name is required');
-      return;
-    }
-    if (!formData.email.trim()) {
-      setError('Email is required');
-      return;
-    }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-    if (!formData.mobile.trim()) {
-      setError('Mobile number is required');
-      return;
-    }
-    if (formData.mobile.length < 10) {
-      setError('Mobile number must be at least 10 digits');
-      return;
-    }
-    if (!formData.password) {
-      setError('Password is required');
-      return;
-    }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
+    if (!formData.fullName.trim()) return setError('Full name is required');
+    if (!formData.email.trim()) return setError('Email is required');
+    if (!/\S+@\S+\.\S+/.test(formData.email)) return setError('Please enter a valid email address');
+    if (!formData.mobile.trim()) return setError('Mobile number is required');
+    if (formData.mobile.length < 10) return setError('Mobile number must be at least 10 digits');
+    if (!formData.password) return setError('Password is required');
+    if (formData.password.length < 6) return setError('Password must be at least 6 characters');
 
     setIsLoading(true);
     setError('');
@@ -100,17 +87,19 @@ const SignUp = () => {
           email: formData.email,
           mobile: formData.mobile,
           password: formData.password,
-          role: formData.role,
+          role: formData.role, // Explicitly sending selected role
         },
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
       
-      dispatch(setUserData(result.data.user));
-      console.log("SignUp Success:", result.data);
-      alert("Account created successfully! Please login.");
-      navigate('/signin');
+      const { user, token } = result.data;
+
+      // Token save & Redux update
+      if (token) localStorage.setItem('token', token);
+      dispatch(setUserData(user));
+
+      // Direct Role-based Redirect
+      handleRoleRedirect(user?.role || formData.role);
       
     } catch (error) {
       console.error("SignUp Error:", error.response?.data || error.message);
@@ -122,15 +111,8 @@ const SignUp = () => {
 
   // Handle Google Auth
   const GoogleAuth = async () => {
-    if (!formData.mobile) {
-      setError("Please enter mobile number first.");
-      return;
-    }
-
-    if (formData.mobile.length !== 10) {
-      setError("Please enter a valid 10 digit mobile number.");
-      return;
-    }
+    if (!formData.mobile) return setError("Please enter mobile number first.");
+    if (formData.mobile.length < 10) return setError("Please enter a valid 10 digit mobile number.");
 
     setIsLoading(true);
     setError("");
@@ -140,26 +122,21 @@ const SignUp = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      console.log("Google User:", user);
-
       const { data } = await axios.post(
         `${serverUrl}/api/auth/google`,
         {
           fullName: user.displayName,
           email: user.email,
           mobile: formData.mobile,
+          role: formData.role // Passes selected role for google signup
         },
-        {
-          withCredentials: true,
-        }
+        { withCredentials: true }
       );
 
+      if (data.token) localStorage.setItem('token', data.token);
       dispatch(setUserData(data.user));
       
-      // ✅ 🚀 SAVE TOKEN TO LOCAL STORAGE (Fix for Google Signup)
-      localStorage.setItem('token', data.token);
-      
-      navigate("/home");
+      handleRoleRedirect(data.user?.role || formData.role);
 
     } catch (error) {
       console.error("Google authentication failed.", error);
@@ -171,10 +148,8 @@ const SignUp = () => {
 
   useGSAP(() => {
     const tl = gsap.timeline();
-
     gsap.set(cardRef.current, { scale: 0.4, opacity: 0, display: 'none' });
 
-    // 1. Fish Entry & Swimming Sequence
     tl.fromTo(
       introFishRef.current,
       { x: '-120vw', y: 40, scale: 0.4, rotation: 20 },
@@ -183,7 +158,6 @@ const SignUp = () => {
     .to(introFishRef.current, { 
       rotation: -12, duration: 0.12, yoyo: true, repeat: 1, ease: 'sine.inOut' 
     })
-    // 2. Exploding Fish into Form Morph
     .to(introFishRef.current, {
       scale: 30, 
       opacity: 0, 
@@ -194,7 +168,6 @@ const SignUp = () => {
         if (introFishRef.current) introFishRef.current.style.display = 'none';
       }
     })
-    // 3. Advanced Glass Form Pop
     .set(cardRef.current, { display: 'block' }, "-=0.25")
     .fromTo(
       cardRef.current,
@@ -257,10 +230,9 @@ const SignUp = () => {
         />
       )}
 
-      {/* Background Environment */}
+      {/* Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
         <div className="absolute inset-0 opacity-25 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-400 via-transparent to-transparent animate-pulse" />
-
         <div className="absolute top-[25%] left-0 bg-fish-1 text-3xl opacity-70 filter drop-shadow-[0_0_12px_rgba(255,140,0,0.8)]">🐠</div>
         <div className="absolute top-[65%] right-0 bg-fish-2 text-4xl opacity-60 filter drop-shadow-[0_0_15px_rgba(0,220,255,0.8)]">🐬</div>
         <div className="absolute top-[45%] left-0 bg-fish-2 text-3xl opacity-50 filter drop-shadow-[0_0_10px_rgba(255,0,128,0.8)]">🦐</div>
@@ -278,12 +250,9 @@ const SignUp = () => {
             }}
           />
         ))}
-
-        <div className="absolute top-0 left-1/4 w-96 h-[600px] bg-gradient-to-b from-cyan-500/10 to-transparent transform -skew-x-12 blur-3xl" />
-        <div className="absolute top-0 right-1/4 w-96 h-[600px] bg-gradient-to-b from-blue-500/10 to-transparent transform skew-x-12 blur-3xl" />
       </div>
 
-      {/* Intro Morphing Fish */}
+      {/* Fish Intro */}
       <div ref={introFishRef} className="absolute z-50 flex items-center justify-center drop-shadow-[0_0_40px_rgba(6,182,212,0.9)]">
         <svg viewBox="0 0 512 512" fill="currentColor" className="text-cyan-400 w-36 h-36 transform scale-x-[-1] animate-pulse">
           <path d="M497.9 234.1c-13.3-10.7-31.5-12.7-47-5.1-23.7 11.5-49.9 22.1-77.5 30.6-26.6-21.7-56-42.3-87.3-61.2 38.6-26.9 74.2-59.2 105.1-95.9 10.9-12.9 9.8-31.9-2.5-43.4-12.8-12-32.9-11.4-44.9 1.4-33.1 39.5-71.1 73.9-112.5 101.4C198.8 45.4 153.2 21.6 102.4 8.2 88.4 4.5 73.5 12.3 68.3 26.2c-5.3 14 2.3 29.5 16.1 34.6 44.8 16.7 85 41.2 119.5 73-35.3 21.1-71.8 44.4-108.8 69.3C52.3 189 28.7 172.9 6.2 161.4c-13-6.6-29.1-.9-35.3 12.4-6.2 13.3-.4 29.1 12.9 35.3 25.1 12.7 51.5 29.8 77.9 51.5-30.8 22-61.6 45.2-91.4 69.1-11.9 9.5-14.1 26.5-4.9 38.6 9.2 12.1 26.2 14.3 38.4 5.1 32.8-25.1 66-49.3 98.7-72.3 38.1 21.3 77.7 40.5 117.9 57.2-34.9 25.1-66.7 54.3-94.2 86.8-10.2 11.9-9.1 29.7 2.6 40.1 12.1 10.7 30.3 9.6 40.9-2.5 29.7-34.7 64-66 101.4-93.5 32.7 18.2 63.8 38 92.9 58.7-25.9 7.7-50.6 17.5-73.1 29.3-13.6 7.1-19.1 23.8-12 37.4 7.1 13.6 23.8 19.1 37.4 12 28.9-15 57.6-25.5 85.1-32.1 16.4-3.9 31.9 6.1 36.6 22.4 4.7 16.3 18.9 27.9 36.1 28.8 17.2.9 32.2-10.2 36.2-26.9 13.6-57.8 7.3-119-17-172.1 27.4-8.8 53.6-19.3 77.3-31.2 16.1-8.1 25.3-25.5 21.8-43.1-3.6-17.6-17.2-31.5-34.9-35.8z"/>
@@ -307,7 +276,6 @@ const SignUp = () => {
           </p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm form-anim">
             {error}
@@ -339,7 +307,6 @@ const SignUp = () => {
             </div>
           </div>
 
-          {/* Full Name */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Full Name</label>
             <input 
@@ -353,7 +320,6 @@ const SignUp = () => {
             />
           </div>
 
-          {/* Email */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Email Address</label>
             <input 
@@ -367,7 +333,6 @@ const SignUp = () => {
             />
           </div>
 
-          {/* Mobile */}
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Mobile Number</label>
             <input 
@@ -381,7 +346,6 @@ const SignUp = () => {
             />
           </div>
 
-          {/* Password */}
           <div className="form-anim space-y-1">
             <div className="flex justify-between items-center">
               <label className="text-xs font-medium text-slate-300">Password</label>
@@ -418,7 +382,6 @@ const SignUp = () => {
             )}
           </div>
 
-          {/* Submit Button */}
           <div className="form-anim pt-1">
             <button
               type="submit" 
@@ -439,7 +402,6 @@ const SignUp = () => {
           </div>
         </form>
 
-        {/* Divider */}
         <div className="relative my-3.5 form-anim">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-800" />
@@ -449,7 +411,6 @@ const SignUp = () => {
           </div>
         </div>
 
-        {/* Google Auth */}
         <div className="form-anim">
           <button 
             type="button"
@@ -469,7 +430,6 @@ const SignUp = () => {
           </button>
         </div>
 
-        {/* Login Link */}
         <div className="text-center mt-3.5 form-anim">
           <p className="text-xs text-slate-400">
             Already have an account?{' '}

@@ -1,31 +1,26 @@
-import { useEffect } from 'react';
-import axios from 'axios';
-import { useDispatch, useSelector } from 'react-redux';
-import { serverUrl } from '../App';
-import { setShops } from '../redux/userSlice';
+import { useEffect } from "react";
+import axios from "axios";
+import { useDispatch } from "react-redux";
+import { serverUrl } from "../App";
+import { setShops } from "../redux/userSlice"; // Apne Redux slice path ke mutabiq check karein
 
-export const useGetShopsByCity = () => {
-    const dispatch = useDispatch();
-    const { city } = useSelector((state) => state.user);
+export function useGetShopsByCity() {
+  const dispatch = useDispatch();
 
-    useEffect(() => {
-        if (!city) return;
+  useEffect(() => {
+    const fetchAllShops = async () => {
+      try {
+        const res = await axios.get(`${serverUrl}/api/shop/all-shops`);
+        if (res.data?.success) {
+          dispatch(setShops(res.data.shops));
+        }
+      } catch (err) {
+        console.error("Error fetching all shops:", err);
+      }
+    };
 
-        const fetchShops = async () => {
-            try {
-                const response = await axios.get(`${serverUrl}/api/shop/get-by-city/${city}`, {
-                    withCredentials: true
-                });
+    fetchAllShops();
+  }, [dispatch]);
+}
 
-                if (response.data.success || response.data.shops) {
-                    dispatch(setShops(response.data.shops));
-                }
-            } catch (err) {
-                console.error("Error fetching shops by city:", err);
-                dispatch(setShops([]));
-            }
-        };
-
-        fetchShops();
-    }, [city, dispatch]);
-};
+export default useGetShopsByCity;

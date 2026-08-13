@@ -131,7 +131,22 @@ const orderSchema = new mongoose.Schema({
     cancelledAt: Date,
     cancellationReason: { type: String },
     trackingId: { type: String },
-    estimatedDeliveryDate: { type: Date }
+    estimatedDeliveryDate: { type: Date },
+
+    // 🚀 NEW: Delivery Boy Details (Integrated into Order Model)
+    deliveryDetails: {
+        assignedTo: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: "DeliveryBoy", // Reference to your DeliveryBoy model
+            default: null 
+        },
+        assignedAt: { type: Date },
+        acceptedAt: { type: Date },
+        deliveredAt: { type: Date },
+        deliveryBoyName: { type: String },
+        deliveryBoyMobile: { type: String },
+        deliveryNotes: { type: String }
+    }
 }, { 
     timestamps: true,
     toJSON: { virtuals: true },
@@ -162,18 +177,17 @@ orderSchema.virtual('summary').get(function() {
 });
 
 // ==========================================
-// MIDDLEWARES
+// MIDDLEWARES (🐛 FIXED)
 // ==========================================
 
-// 1. Pre-save middleware (Triggers on `new Order().save()`)
-orderSchema.pre('save', function(next) {
+// ✅ FIXED: REMOVED 'next' parameter and 'next()' call
+orderSchema.pre('save', function() {
     if (this.isModified('status')) {
         this.updateStatusTimestamps();
     }
-    next();
 });
 
-// 2. Pre-findOneAndUpdate middleware (✅ ULTIMATE FIX - no 'next is not a function' error)
+// ✅ FIXED: Moved to async function, removed 'next'
 orderSchema.pre('findOneAndUpdate', async function() {
     const update = this.getUpdate();
     
@@ -198,7 +212,6 @@ orderSchema.pre('findOneAndUpdate', async function() {
         }
     }
     
-    // ✅ PERFECT FIX: Bypass validation directly here
     this.setOptions({ runValidators: false });
 });
 

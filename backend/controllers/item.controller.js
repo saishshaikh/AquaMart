@@ -10,7 +10,6 @@ export const addItem = async (req, res) => {
         const { name, category, price } = req.body;
         let image;
 
-        // Image upload logic
         if (req.file) {
             image = await uploadOnImageKit(req.file.path);
             if (!image) {
@@ -18,13 +17,11 @@ export const addItem = async (req, res) => {
             }
         }
 
-        // Check karo user ki shop exist karti hai ya nahi
         const shop = await Shop.findOne({ owner: req.userId });
         if (!shop) {
             return res.status(400).json({ success: false, message: "Shop not found for this user. Please create a shop first." });
         }
 
-        // Naya item create karo
         const item = await Item.create({
             name,
             category,
@@ -33,7 +30,6 @@ export const addItem = async (req, res) => {
             shop: shop._id
         });
 
-        // Shop validation error se bachne ke liye findByIdAndUpdate aur $push ka use karein
         const updatedShop = await Shop.findByIdAndUpdate(
             shop._id,
             { $push: { items: item._id } },
@@ -53,7 +49,6 @@ export const addItem = async (req, res) => {
     }
 };
 
-
 // ==========================================
 // 2. EDIT ITEM CONTROLLER
 // ==========================================
@@ -63,7 +58,6 @@ export const editItem = async (req, res) => {
         const { name, category, price } = req.body;
         let image;
 
-        // Image logic: Agar nayi file upload hui hai, toh upload karo
         if (req.file) {
             image = await uploadOnImageKit(req.file.path);
             if (!image) {
@@ -71,14 +65,11 @@ export const editItem = async (req, res) => {
             }
         }
 
-        // Update object prepare karo
         const updateData = { name, category, price };
-        
         if (image) {
             updateData.image = image;
         }
 
-        // Item find karo aur update karo
         const item = await Item.findByIdAndUpdate(
             itemId, 
             updateData, 
@@ -102,30 +93,26 @@ export const editItem = async (req, res) => {
 };
 
 // ==========================================
-// 3. GET ITEM BY CITY CONTROLLER
+// 3. GET ALL ITEMS CONTROLLER (No City Boundary)
 // ==========================================
-export const getItemByCity = async (req, res) => {
-  try {
-    const { city } = req.query; // ✅ req.params ki jagah req.query karein
+export const getAllItems = async (req, res) => {
+    try {
+        // Bina kisi location/city filter ke SAARI ITEMS fetch honge
+        const items = await Item.find({
+            name: { $exists: true, $ne: "" },
+            price: { $gt: 0 }
+        }).populate("shop", "name city address");
 
-    if (!city) {
-      return res.status(400).json({ message: "city is required" });
+        return res.status(200).json({
+            success: true,
+            count: items.length,
+            items
+        });
+
+    } catch (error) {
+        return res.status(500).json({ 
+            success: false, 
+            message: `Error fetching all items: ${error.message}` 
+        });
     }
-
-    const shops = await Shop.find({
-      city: { $regex: new RegExp(`^${city}$`, "i") }
-    }).populate('items');
-
-    if (!shops || shops.length === 0) {
-      return res.status(400).json({ message: "shops not found" });
-    }
-
-    const shopIds = shops.map((shop) => shop._id);
-
-    const items = await Item.find({ shop: { $in: shopIds } });
-    return res.status(200).json(items);
-
-  } catch (error) {
-    return res.status(500).json({ message: `get item by city error ${error}` });
-  }
 };
