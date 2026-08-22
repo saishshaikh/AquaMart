@@ -3,8 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import DeliveryMap from '../components/DeliveryMap'; // 📍 Live Geoapify Map Component
-
-const SERVER_URL = "http://localhost:8000";
+import LocationSender from '../components/LocationSender'; // ✅ Naya Component
+import { serverUrl } from '../App'; // ✅ Import serverUrl
 
 function DeliveryDashboard() {
   const [orders, setOrders] = useState([]);
@@ -42,7 +42,7 @@ function DeliveryDashboard() {
 
       // Check Active Order
       try {
-        const activeRes = await axios.get(`${SERVER_URL}/api/delivery/active-order`, config);
+        const activeRes = await axios.get(`${serverUrl}/api/delivery/active-order`, config);
         if (activeRes.data?.success && activeRes.data?.order) {
           setMyOrder(activeRes.data.order);
           setLoading(false);
@@ -54,7 +54,7 @@ function DeliveryDashboard() {
       }
 
       // Fetch Available Orders
-      const res = await axios.get(`${SERVER_URL}/api/delivery/available-orders`, config);
+      const res = await axios.get(`${serverUrl}/api/delivery/available-orders`, config);
       if (res.data?.success) {
         setOrders(res.data.orders || []);
       }
@@ -94,7 +94,7 @@ function DeliveryDashboard() {
   const acceptOrder = async (orderId) => {
     try {
       const res = await axios.post(
-        `${SERVER_URL}/api/delivery/accept`,
+        `${serverUrl}/api/delivery/accept`,
         { orderId },
         getAxiosConfig()
       );
@@ -112,7 +112,7 @@ function DeliveryDashboard() {
   const markDelivered = async () => {
     try {
       const res = await axios.put(
-        `${SERVER_URL}/api/delivery/complete/${myOrder._id}`,
+        `${serverUrl}/api/delivery/complete/${myOrder._id}`,
         {},
         getAxiosConfig()
       );
@@ -143,6 +143,10 @@ function DeliveryDashboard() {
       <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 flex items-center justify-center">
         <div className="w-full max-w-lg">
           <h1 className="text-2xl font-bold text-emerald-400 mb-4 text-center">🚚 Active Delivery</h1>
+          
+          {/* ✅ Live Location Sender - Delivery Boy ki GPS location backend ko bhejta hai */}
+          <LocationSender activeOrderId={myOrder._id} />
+
           <div className="bg-slate-800 p-6 rounded-3xl border border-emerald-500/30 shadow-2xl">
             
             {/* Header Details */}

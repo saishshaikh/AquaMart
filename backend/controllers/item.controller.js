@@ -93,11 +93,42 @@ export const editItem = async (req, res) => {
 };
 
 // ==========================================
-// 3. GET ALL ITEMS CONTROLLER (No City Boundary)
+// 3. DELETE ITEM CONTROLLER (NEW ADDED)
+// ==========================================
+export const deleteItem = async (req, res) => {
+    try {
+        const itemId = req.params.itemId;
+        
+        const item = await Item.findByIdAndDelete(itemId);
+
+        if (!item) {
+            return res.status(400).json({ success: false, message: "Item not found" });
+        }
+
+        // Shop ke items array se bhi delete karo
+        await Shop.findByIdAndUpdate(
+            item.shop,
+            { $pull: { items: itemId } },
+            { new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Item deleted successfully",
+            item
+        });
+
+    } catch (error) {
+        console.error("Error in deleteItem:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+
+// ==========================================
+// 4. GET ALL ITEMS CONTROLLER (No City Boundary)
 // ==========================================
 export const getAllItems = async (req, res) => {
     try {
-        // Bina kisi location/city filter ke SAARI ITEMS fetch honge
         const items = await Item.find({
             name: { $exists: true, $ne: "" },
             price: { $gt: 0 }

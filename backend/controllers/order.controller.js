@@ -176,7 +176,7 @@ export const placeOrder = async (req, res) => {
 };
 
 // ==========================================
-// 2. GET USER ORDERS (Customer Perspective)
+// 2. GET USER ORDERS (Customer Perspective) ✅ FIXED: Delivery Boy Info Added
 // ==========================================
 export const getUserOrders = async (req, res) => {
     try {
@@ -185,6 +185,10 @@ export const getUserOrders = async (req, res) => {
         const orders = await Order.find({ user: userId })
             .populate("shopOrders.shop", "shopName name image address")
             .populate("shopOrders.shopOrderItems.item", "name image images price imageUrl")
+            .populate({
+                path: "deliveryDetails.assignedTo", // ✅ Delivery Boy ka Data
+                select: "fullName mobile"           // Sirf Name aur Phone
+            })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -203,7 +207,7 @@ export const getUserOrders = async (req, res) => {
 };
 
 // ==========================================
-// 3. GET ORDER DETAILS (Customer Perspective)
+// 3. GET ORDER DETAILS (Customer Perspective) ✅ FIXED: Delivery Boy Info Added
 // ==========================================
 export const getOrderDetails = async (req, res) => {
     try {
@@ -212,7 +216,11 @@ export const getOrderDetails = async (req, res) => {
 
         const order = await Order.findOne({ _id: orderId, user: userId })
             .populate("shopOrders.shop", "shopName name image address phone")
-            .populate("shopOrders.shopOrderItems.item", "name image images price category imageUrl");
+            .populate("shopOrders.shopOrderItems.item", "name image images price category imageUrl")
+            .populate({
+                path: "deliveryDetails.assignedTo", // ✅ Delivery Boy ka Data
+                select: "fullName mobile"           // Sirf Name aur Phone
+            });
 
         if (!order) {
             return res.status(404).json({ 
@@ -237,7 +245,7 @@ export const getOrderDetails = async (req, res) => {
 };
 
 // ==========================================
-// 4. GET SHOP ORDERS (For Shop Owner / Admin)
+// 4. GET SHOP ORDERS (For Shop Owner / Admin) - ✅ 500 ERROR FIXED
 // ==========================================
 export const getShopOrders = async (req, res) => {
     try {
@@ -250,7 +258,16 @@ export const getShopOrders = async (req, res) => {
             });
         }
 
-        const currentUser = await User.findById(ownerId);
+        // ✅ FIX: req.user se currentUser lo (Lightweight)
+        const currentUser = req.user || await User.findById(ownerId);
+        
+        if (!currentUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
         const ownerObjectId = new mongoose.Types.ObjectId(ownerId);
         const userShops = await Shop.find({ owner: ownerObjectId }).select("_id");
         const userShopIds = userShops.map(s => s._id.toString());
@@ -271,6 +288,10 @@ export const getShopOrders = async (req, res) => {
             .populate("user", "fullName name email phone mobile")
             .populate("shopOrders.shop", "shopName name image address")
             .populate("shopOrders.shopOrderItems.item", "name image images price imageUrl")
+            .populate({
+                path: "deliveryDetails.assignedTo",
+                select: "fullName mobile"
+            })
             .sort({ createdAt: -1 });
 
         const filteredOrders = orders
@@ -293,7 +314,6 @@ export const getShopOrders = async (req, res) => {
             success: true,
             orders: filteredOrders
         });
-
     } catch (error) {
         console.error("❌ Error fetching shop orders:", error.message);
         res.status(500).json({
@@ -303,9 +323,8 @@ export const getShopOrders = async (req, res) => {
         });
     }
 };
-
 // ==========================================
-// 5. UPDATE ORDER STATUS (For Shop Owner) - 💥 CRASH PROOF & LIVE READY
+// 5. UPDATE ORDER STATUS (For Shop Owner)
 // ==========================================
 export const updateOrderStatus = async (req, res) => {
     try {
@@ -369,7 +388,6 @@ export const updateOrderStatus = async (req, res) => {
             note: `Shop order ${status} by ${shopOrder.shopName || 'Vendor'}`
         });
 
-        // ✅ FINAL FIX: Save WITHOUT Mongoose Validation
         await order.save({ validateBeforeSave: false });
 
         res.status(200).json({
@@ -543,7 +561,7 @@ export const getOrderStatistics = async (req, res) => {
 };
 
 // ==========================================
-// 8. GET ORDER BY ID (Admin/Owner)
+// 8. GET ORDER BY ID (Admin/Owner) ✅ FIXED: Delivery Boy Info Added
 // ==========================================
 export const getOrderById = async (req, res) => {
     try {
@@ -552,7 +570,11 @@ export const getOrderById = async (req, res) => {
         const order = await Order.findById(orderId)
             .populate("user", "fullName name email phone")
             .populate("shopOrders.shop", "shopName name image address phone")
-            .populate("shopOrders.shopOrderItems.item", "name image images price category imageUrl");
+            .populate("shopOrders.shopOrderItems.item", "name image images price category imageUrl")
+            .populate({
+                path: "deliveryDetails.assignedTo", // ✅ Delivery Boy ka Data
+                select: "fullName mobile"
+            });
 
         if (!order) {
             return res.status(404).json({ 

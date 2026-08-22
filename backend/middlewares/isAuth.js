@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 
 // ==========================================
-// 1. AUTHENTICATION MIDDLEWARE
+// 1. AUTHENTICATION MIDDLEWARE (FAST VERSION)
 // ==========================================
 export const isAuth = async (req, res, next) => {
   try {
@@ -20,20 +20,12 @@ export const isAuth = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Support both decoded.id, decoded._id and decoded.userId
+    // ✅ Support both decoded.id, decoded._id and decoded.userId
     const userId = decoded.id || decoded._id || decoded.userId;
 
-    const user = await User.findById(userId).select("-password");
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "User not found in database. Please log in again.",
-      });
-    }
-
-    req.userId = user._id;
-    req.user = user;
+    // ✅ FAST: Lightweight user object - DB query sirf zaroorat par karo
+    req.userId = userId;
+    req.user = { _id: userId, role: decoded.role }; // ✅ Lightweight
 
     next();
   } catch (error) {

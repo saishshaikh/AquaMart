@@ -13,7 +13,7 @@ import jwt from "jsonwebtoken";
 // ============================================
 
 /**
- * @desc    User Signup
+ * @desc    User Signup (Delivery Boy bhi yahi se register hoga)
  * @route   POST /api/auth/signup
  * @access  Public
  */
@@ -25,6 +25,7 @@ const signup = async (req, res) => {
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({
+                success: false,
                 message: "User already exists with this email"
             });
         }
@@ -32,6 +33,7 @@ const signup = async (req, res) => {
         // Validate password length
         if (password.length < 6) {
             return res.status(400).json({
+                success: false,
                 message: "Password must be at least 6 characters"
             });
         }
@@ -39,19 +41,24 @@ const signup = async (req, res) => {
         // Validate mobile number
         if (mobile.length < 10) {
             return res.status(400).json({
+                success: false,
                 message: "Mobile number must be at least 10 digits"
             });
         }
 
+        // ✅ Role validation (Delivery, Admin, User)
+        const validRoles = ["user", "admin", "delivery"];
+        const userRole = validRoles.includes(role) ? role : "user"; // Default "user"
+
         // Hash password
         const hashPassword = await bcrypt.hash(password, 10);
 
-        // Create user
+        // ✅ Create user (Delivery role bhi handle karega)
         const user = await User.create({
             fullName,
             email,
             mobile,
-            role,
+            role: userRole,
             password: hashPassword,
         });
 
@@ -363,7 +370,7 @@ const resetPassword = async (req, res) => {
 // ============================================
 const googleAuth = async (req, res) => {
   try {
-    const { fullName, email } = req.body;
+    const { fullName, email, mobile, role } = req.body;
 
     if (!fullName || !email) {
       return res.status(400).json({
@@ -378,7 +385,8 @@ const googleAuth = async (req, res) => {
       user = await User.create({
         fullName,
         email,
-        role: "user",
+        mobile: mobile || "",
+        role: role || "user", // ✅ Role yahan bhi apply karein
         isGoogleUser: true,
       });
     }

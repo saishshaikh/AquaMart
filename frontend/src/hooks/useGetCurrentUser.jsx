@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { serverUrl } from "../App";
 import { useDispatch } from "react-redux";
@@ -8,18 +8,15 @@ const useGetCurrentUser = () => {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
   
-  // 🔴 Ref flag to ensure the API runs EXACTLY ONCE
+  // 🔴 Ref flag - Ensure API runs EXACTLY ONCE
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    // Agar ek baar call ho chuka hai, toh dobara execute mat karo
+    // Sirf ek baar chalega
     if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
 
     const getCurrentUser = async () => {
-      hasFetchedRef.current = true; // Set flag immediately
-
-      console.log("🚀 Calling Current User API...");
-
       try {
         const token = localStorage.getItem("token");
 
@@ -31,20 +28,16 @@ const useGetCurrentUser = () => {
           }
         );
 
-        console.log("✅ Current User:", res.data.user);
-        dispatch(setUserData(res.data.user));
-
+        dispatch(setUserData(res.data.user)); // ✅ Ek baar set karo
       } catch (error) {
-        console.log("❌ Error:", error.response?.status);
-        console.log(error.response?.data || error.message);
-        dispatch(setUserData(null));
+        dispatch(setUserData(null)); // ✅ Error par null set karo
       } finally {
         setLoading(false);
       }
     };
 
     getCurrentUser();
-  }, [dispatch]);
+  }, []); // ✅ EMPTY DEPENDENCY ARRAY - SABSE IMPORTANT!
 
   return { loading };
 };

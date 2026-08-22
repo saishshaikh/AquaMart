@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { gsap } from "gsap";
-import { MapPin, Navigation, Star, Clock, ShieldCheck, Store, Utensils, Tag } from "lucide-react";
+import { MapPin, Navigation, Star, Clock, ShieldCheck, Store, Utensils, Tag, Package, Phone } from "lucide-react";
 
 import { categories } from "../data/Category";
 import { useGetShopsByCity } from "../hooks/useGetShopsByCity"; 
 import { useGetItemByCity } from "../hooks/useGetItemByCity"; 
-
-// ✅ addToCart aur removeFromCart dono import kiye
 import { addToCart, removeFromCart } from "../redux/userSlice.js"; 
+
+// ✅ Naya Component (Live Tracking Map)
+import LiveTrackingMap from "../components/LiveTrackingMap";
 
 const UserDashboard = () => {
   // =========================
@@ -20,13 +21,17 @@ const UserDashboard = () => {
   const shopTitleRef = useRef(null);
   const shopsGridRef = useRef(null);
   const itemsTitleRef = useRef(null);
+  const orderSectionRef = useRef(null);
 
   // =========================
   // Redux & State
   // =========================
   const dispatch = useDispatch();
-  // ✅ items aur cartitems dono nikaale
-  const { city, address, shops, items, cartitems } = useSelector((state) => state.user);
+  const { city, address, shops, items, cartitems, userData } = useSelector((state) => state.user);
+
+  // ✅ MY ORDERS STATE
+  const [myOrders, setMyOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   const [selectedLocation, setSelectedLocation] = useState(
     city || localStorage.getItem("userLocation") || "Bhiwandi"
@@ -38,6 +43,33 @@ const UserDashboard = () => {
 
   useGetShopsByCity(selectedLocation);
   useGetItemByCity(selectedLocation);
+
+  // ✅ FETCH MY ORDERS (Delivery Boy Info ke saath)
+  const fetchMyOrders = async () => {
+    if (!userData?._id) return;
+    setLoadingOrders(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${serverUrl}/api/order/get-user-orders`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data?.success) {
+        setMyOrders(response.data.orders || []);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching orders:", err);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userData?._id) {
+      fetchMyOrders();
+    }
+  }, [userData?._id]);
 
   // Sync Redux state and localStorage
   useEffect(() => {
@@ -97,6 +129,11 @@ const UserDashboard = () => {
 
       if (shopTitleRef.current) {
         tl.fromTo(shopTitleRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, "-=0.4");
+      }
+
+      // Orders section animation
+      if (orderSectionRef.current) {
+        tl.fromTo(orderSectionRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, "-=0.4");
       }
     }, dashboardRef);
 
@@ -347,6 +384,75 @@ const UserDashboard = () => {
             </p>
           </div>
         )}
+
+        {/* ================================================= */}
+        {/* ✅ MY ORDERS SECTION (Delivery Boy Info + Live Tracking) */}
+        {/* ================================================= */}
+        <div ref={orderSectionRef} className="mt-16">
+          <div className="mb-6 flex items-center gap-2">
+            <Package className="w-6 h-6 text-cyan-600" />
+            <h3 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+              My Recent Orders
+            </h3>
+          </div>
+
+          {loadingOrders ? (
+            <div className="text-center py-8 text-cyan-600 animate-pulse">Loading Orders...</div>
+          ) : myOrders.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center border border-slate-200 shadow-sm max-w-md mx-auto">
+              <Package className="w-12 h-12 text-cyan-600 mx-auto mb-3 animate-bounce" />
+              <h4 className="text-base font-bold text-slate-800">No orders yet</h4>
+              <p className="text-xs text-slate-500 mt-1">
+                When you place an order, you can track it here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {myOrders.map((order) => (
+                <div key={order._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-slate-500">#{order._id?.slice(-6).toUpperCase()}</span>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                      order.status === 'delivered' ? 'bg-emerald-50 text-emerald-700' :
+                      order.status === 'out_for_delivery' ? 'bg-orange-50 text-orange-700' :
+                      order.status === 'cancelled' ? 'bg-red-50 text-red-700' :
+                      'bg-cyan-50 text-cyan-700'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+
+                  <div className="text-slate-600 text-sm mb-2">
+                    <span className="font-bold">Total: </span>₹{order.totalAmount}
+                  </div>
+
+                  {/* 🚚 DELIVERY BOY INFO */}
+                  {order.deliveryDetails?.deliveryBoyName && (
+                    <div className="bg-slate-50 rounded-xl p-3 mb-2 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                        {order.deliveryDetails.deliveryBoyName?.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-slate-700">{order.deliveryDetails.deliveryBoyName}</p>
+                        <p className="text-[10px] text-slate-500">
+                          📞 <a href={`tel:${order.deliveryDetails.deliveryBoyMobile}`} className="text-cyan-600">{order.deliveryDetails.deliveryBoyMobile}</a>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 🗺️ LIVE TRACKING MAP */}
+                  {order.status === 'out_for_delivery' && (
+                    <LiveTrackingMap 
+                      orderId={order._id} 
+                      deliveryAddress={order.deliveryAddress} 
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

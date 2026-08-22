@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
-import { Store, UploadCloud, ArrowLeft, CheckCircle, MapPin, Building, Globe, Navigation } from 'lucide-react';
+import { Store, UploadCloud, ArrowLeft, CheckCircle, MapPin, Building, Globe, Navigation, LocateFixed } from 'lucide-react';
 import { serverUrl } from '../App';
 import { setMyShopData } from '../redux/ownerSlice';
 import useGetCity from '../hooks/useGetCity';
@@ -21,6 +21,7 @@ function CreateShop() {
   const [address, setAddress] = useState(myShopData?.address || reduxAddress || userData?.address || "");
   const [city, setCity] = useState(myShopData?.city || reduxCity || userData?.city || "Mumbai");
   const [state, setState] = useState(myShopData?.state || userData?.state || "Maharashtra");
+  const [pincode, setPincode] = useState(myShopData?.pincode || userData?.pincode || "");
   const [shopCategory, setShopCategory] = useState(myShopData?.shopCategory || "");
 
   const [frontendImage, setFrontendImage] = useState(myShopData?.image || null);
@@ -29,6 +30,7 @@ function CreateShop() {
   const [loading, setLoading] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [error, setError] = useState('');
+  const [locationDetected, setLocationDetected] = useState(false);
 
   // ✅ Admin/User dashboard ki saved city & address se form ko sync karne ke liye
   useEffect(() => {
@@ -43,36 +45,97 @@ function CreateShop() {
     } else if (userData?.address) {
       setAddress(userData.address);
     }
+
+    if (userData?.pincode) {
+      setPincode(userData.pincode);
+    }
   }, [reduxCity, reduxAddress, userData]);
 
-  // ✅ Live Location Detect Button (Agar browser se GPS coordinates lene hon)
+  // ✅ Live Location Detect with FULL ADDRESS
   const detectLiveLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      alert("❌ Geolocation is not supported by your browser");
       return;
     }
 
     setDetectingLocation(true);
+    setError('');
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        console.log("📍 GPS Coordinates:", latitude, longitude);
+        
         try {
-          const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          let fullAddress = '';
+          let detectedCity = '';
+          let detectedState = '';
+          let detectedPincode = '';
+          let streetName = '';
+
+          // ✅ Method 1: Try OpenStreetMap (Free, No API Key)
+          const res = await axios.get(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            {
+              headers: {
+                'User-Agent': 'Synexa.Ai - Shop Location Detection'
+              }
+            }
+          );
+
+          console.log("🔍 OSM Response:", res.data);
+
           if (res.data && res.data.address) {
             const addr = res.data.address;
-            const detectedCity = addr.city || addr.town || addr.village || addr.county || "";
-            const detectedState = addr.state || "";
-            const fullRoadAddress = res.data.display_name || "";
-
-            if (detectedCity) setCity(detectedCity);
-            if (detectedState) setState(detectedState);
-            if (fullRoadAddress) setAddress(fullRoadAddress);
             
-            alert("Live location fetched successfully!");
+            // ✅ Extract ALL details
+            detectedCity = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.suburb || "";
+            detectedState = addr.state || addr.region || "";
+            detectedPincode = addr.postcode || "";
+            streetName = addr.road || addr.street || addr.suburb || "";
+            const houseNumber = addr.house_number || "";
+            const neighbourhood = addr.neighbourhood || "";
+            const hamlet = addr.hamlet || "";
+
+            // ✅ Build FULL ADDRESS
+            fullAddress = "";
+            if (houseNumber) fullAddress += houseNumber + ", ";
+            if (streetName) fullAddress += streetName + ", ";
+            if (neighbourhood) fullAddress += neighbourhood + ", ";
+            if (hamlet) fullAddress += hamlet + ", ";
+            if (detectedCity) fullAddress += detectedCity + ", ";
+            if (detectedState) fullAddress += detectedState + ", ";
+            if (detectedPincode) fullAddress += detectedPincode;
+
+            fullAddress = fullAddress.replace(/,\s*$/, '').trim();
+
+            // ✅ If no street, use display_name
+            if (!streetName || streetName === detectedCity) {
+              fullAddress = res.data.display_name || fullAddress;
+            }
+
+            console.log("🏠 Full Address:", fullAddress);
+            console.log("🎯 City:", detectedCity);
+            console.log("🏠 Street:", streetName);
+            console.log("📮 Pincode:", detectedPincode);
           }
+
+          // ✅ Update form with detected location
+          if (detectedCity) {
+            setCity(detectedCity);
+            setState(detectedState);
+            setAddress(fullAddress);
+            setPincode(detectedPincode);
+            setLocationDetected(true);
+            
+            alert("📍 Live location detected successfully!\n" + fullAddress);
+          } else {
+            setError("Could not fetch complete address. Please enter manually.");
+          }
+
         } catch (err) {
           console.error("Error fetching location details:", err);
-          setError("Failed to fetch address from coordinates.");
+          setError("Failed to fetch address from coordinates. Please enter manually.");
         } finally {
           setDetectingLocation(false);
         }
@@ -80,9 +143,14 @@ function CreateShop() {
       (error) => {
         console.error(error);
         setDetectingLocation(false);
-        alert("Unable to retrieve your location. Please allow location permissions.");
+        let errorMessage = "Unable to retrieve your location. Please allow location permissions.";
+        if (error.code === 1) errorMessage = "❌ Location access denied. Please enable location permissions.";
+        else if (error.code === 2) errorMessage = "❌ Location unavailable. Please try again.";
+        else if (error.code === 3) errorMessage = "❌ Location request timed out. Please try again.";
+        setError(errorMessage);
+        alert(errorMessage);
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
   };
 
@@ -110,6 +178,7 @@ function CreateShop() {
       formDataToSend.append('city', city);
       formDataToSend.append('state', state);
       formDataToSend.append('address', address);
+      formDataToSend.append('pincode', pincode);
       formDataToSend.append('shopCategory', shopCategory);
 
       if (backendImage) {
@@ -157,10 +226,14 @@ function CreateShop() {
             type="button"
             onClick={detectLiveLocation}
             disabled={detectingLocation}
-            className="flex items-center gap-1.5 px-3 py-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-semibold rounded-lg transition border border-cyan-200"
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition border ${
+              locationDetected 
+                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' 
+                : 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border-cyan-200'
+            }`}
           >
-            <Navigation size={14} className={detectingLocation ? "animate-spin" : ""} />
-            {detectingLocation ? "Detecting..." : "Detect Live Location"}
+            <LocateFixed size={14} className={detectingLocation ? "animate-spin" : ""} />
+            {detectingLocation ? "Detecting..." : locationDetected ? "📍 Location Found" : "Detect Live Location"}
           </button>
         </div>
 
@@ -169,6 +242,13 @@ function CreateShop() {
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
+            </div>
+          )}
+
+          {locationDetected && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
+              <CheckCircle size={16} />
+              Location detected successfully! Address auto-filled below.
             </div>
           )}
 
@@ -233,6 +313,18 @@ function CreateShop() {
             </div>
           </div>
 
+          {/* Pincode */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Pincode</label>
+            <input 
+              type="text" 
+              value={pincode} 
+              onChange={(e) => setPincode(e.target.value)}
+              placeholder="400001" 
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
           {/* Address */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Address *</label>
@@ -260,6 +352,9 @@ function CreateShop() {
               <datalist id="shopCategories">
                 <option value="Fresh Fish" />
                 <option value="Dry Fish" />
+                <option value="Seafood Restaurant" />
+                <option value="Fish Market" />
+                <option value="Aquarium Shop" />
               </datalist>
             </div>
           </div>

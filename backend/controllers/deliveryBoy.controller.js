@@ -120,6 +120,15 @@ export const acceptDelivery = async (req, res) => {
       deliveryStatus: "on_delivery",
     });
 
+    // ✅ Real-time Update to Customer (User ko turant pata chale)
+    if (global.io) {
+      global.io.emit(`order:${orderId}`, {
+        status: "out_for_delivery",
+        deliveryBoyName: user.fullName,
+        deliveryBoyMobile: user.mobile,
+      });
+    }
+
     res.status(200).json({ success: true, message: "Order Accepted Successfully!", order: updatedOrder });
   } catch (error) {
     console.error("❌ Accept Delivery Error:", error.message);
@@ -128,16 +137,24 @@ export const acceptDelivery = async (req, res) => {
 };
 
 // ==========================================
-// 5. UPDATE LOCATION
+// 5. UPDATE LOCATION (Live Tracking ke liye)
 // ==========================================
 export const updateLocation = async (req, res) => {
   try {
-    const { lat, lng } = req.body;
+    const { lat, lng, orderId } = req.body;
+    
+    // ✅ Delivery Boy ki location save karein
     await User.findByIdAndUpdate(req.userId, {
       currentLocation: { lat, lng },
       lastSeenAt: new Date(),
     });
-    res.status(200).json({ success: true });
+
+    // ✅ Live Tracking Broadcast (Socket.IO se user ko bhejo)
+    if (global.io && orderId) {
+      global.io.emit(`location:${orderId}`, { lat, lng });
+    }
+
+    res.status(200).json({ success: true, message: "Location updated" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -155,7 +172,11 @@ export const getActiveOrder = async (req, res) => {
 
     const order = await Order.findById(user.activeOrderId)
       .populate("user", "fullName mobile")
-      .populate("shopOrders.shop", "address name");
+      .populate("shopOrders.shop", "address name")
+      .populate({
+        path: "deliveryDetails.assignedTo", // ✅ Delivery Boy ka Data
+        select: "fullName mobile"
+      });
 
     res.status(200).json({ success: true, order });
   } catch (error) {
@@ -210,6 +231,14 @@ export const completeDelivery = async (req, res) => {
       deliveryStatus: 'available',
       $inc: { totalDeliveries: 1 }
     });
+
+    // ✅ Customer ko real-time status update bhejo
+    if (global.io) {
+      global.io.emit(`order:${orderId}`, {
+        status: "delivered",
+        deliveredAt: new Date(),
+      });
+    }
 
     res.status(200).json({ success: true, message: "Order marked as delivered!" });
   } catch (error) {

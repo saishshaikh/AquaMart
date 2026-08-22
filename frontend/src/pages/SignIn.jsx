@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { useDispatch } from 'react-redux'; // ✅ Add this
+import { useDispatch } from 'react-redux'; 
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import axios from "axios";
@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebase';
-import { setUserData } from '../redux/userSlice.js'; // ✅ Add this
+import { setUserData } from '../redux/userSlice.js'; 
 
 gsap.registerPlugin(useGSAP);
 
@@ -16,7 +16,10 @@ const SignIn = () => {
   const cardRef = useRef(null);
   const introFishRef = useRef(null);
   const navigate = useNavigate();
-  const dispatch = useDispatch(); // ✅ Add dispatch
+  const dispatch = useDispatch(); 
+
+  // ✅ Role State add kiya (User / Admin / Delivery)
+  const [role, setRole] = useState('user');
 
   const [formData, setFormData] = useState({
     email: '',
@@ -26,12 +29,24 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [ripple, setRipple] = useState(null);
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // ✅ Add loading state
+  const [isLoading, setIsLoading] = useState(false); 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setError(''); // ✅ Clear error on change
+    setError(''); 
+  };
+
+  // ✅ Role ke hisaab se redirect
+  const handleRoleRedirect = (userRole) => {
+    const normalizedRole = userRole?.trim()?.toLowerCase();
+    if (normalizedRole === 'delivery' || normalizedRole === 'delivery_boy') {
+      navigate('/delivery-dashboard'); // ✅ Delivery Dashboard
+    } else if (normalizedRole === 'admin') {
+      navigate('/admin-dashboard'); // ✅ Admin Dashboard
+    } else {
+      navigate('/home'); // ✅ User Home
+    }
   };
 
   const handleSignIn = async () => {
@@ -39,8 +54,13 @@ const SignIn = () => {
     setError('');
 
     try {
+      // ✅ Role ke hisaab se API URL change
+      const loginUrl = role === 'delivery' 
+        ? `${serverUrl}/api/delivery/login` 
+        : `${serverUrl}/api/auth/signin`;
+
       const result = await axios.post(
-        `${serverUrl}/api/auth/signin`,
+        loginUrl,
         {
           email: formData.email,
           password: formData.password,
@@ -53,11 +73,13 @@ const SignIn = () => {
       // ✅ Dispatch user data to Redux
       dispatch(setUserData(result.data.user));
 
-      // 🚀 ✅ SAVE TOKEN TO LOCAL STORAGE (FIX)
+      // 🚀 ✅ SAVE TOKEN TO LOCAL STORAGE
       localStorage.setItem('token', result.data.token);
       
       console.log("Login Success:", result.data);
-      navigate("/");
+
+      // ✅ Role ke hisaab se redirect
+      handleRoleRedirect(result.data.user?.role || role);
       
     } catch (error) {
       console.error("SignIn Error:", error.response?.data || error.message);
@@ -84,6 +106,7 @@ const SignIn = () => {
         {
           fullName: user.displayName,
           email: user.email,
+          role: role // ✅ Role pass karo
         },
         {
           withCredentials: true,
@@ -93,11 +116,13 @@ const SignIn = () => {
       // ✅ Dispatch user data to Redux
       dispatch(setUserData(response.data.user));
 
-      // 🚀 ✅ SAVE TOKEN TO LOCAL STORAGE (FIX)
+      // 🚀 ✅ SAVE TOKEN TO LOCAL STORAGE
       localStorage.setItem('token', response.data.token);
       
       console.log("Login Success:", response.data);
-      navigate("/home"); // ✅ Home page par jao
+
+      // ✅ Role ke hisaab se redirect
+      handleRoleRedirect(response.data.user?.role || role);
 
     } catch (error) {
       console.error("Google signin failed:", error.response?.data || error.message);
@@ -282,6 +307,26 @@ const SignIn = () => {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           
+          {/* ✅ ROLE SELECTOR (User / Admin / Delivery) */}
+          <div className="form-anim space-y-1">
+            <label className="text-xs font-medium text-slate-300 flex justify-between">
+              <span>Login As</span>
+              <span className="text-cyan-400 text-[10px] uppercase font-bold tracking-wider">{role}</span>
+            </label>
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#020716]/90 rounded-xl border border-cyan-900/60">
+              {['user', 'admin', 'delivery'].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`py-1.5 text-xs font-semibold capitalize rounded-lg transition-all duration-300 ${role === r ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/40 scale-[1.02]' : 'text-slate-400 hover:text-white hover:bg-cyan-950/40'}`}
+                >
+                  {r === 'delivery' ? 'Delivery' : r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="form-anim space-y-1">
             <label className="text-xs font-medium text-slate-300">Email Address</label>
             <input 
