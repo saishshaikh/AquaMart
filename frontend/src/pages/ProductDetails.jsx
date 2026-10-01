@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { serverUrl } from '../App';
 import { addToCart, removeFromCart } from '../redux/userSlice';
-import Nav1 from '../components/nav1';
+import Nav1 from '../components/Nav1';
 import Footer from '../components/Footer';
 
 const ProductDetails = () => {
