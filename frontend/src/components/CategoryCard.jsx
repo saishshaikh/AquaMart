@@ -40,7 +40,7 @@ const CategoryCard = ({ category, image, index }) => {
       ref={cardRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group relative cursor-pointer overflow-hidden rounded-3xl bg-white shadow-lg shadow-slate-200/60"
+      className="group relative cursor-pointer overflow-hidden rounded-3xl bg-slate-900/70 backdrop-blur-xl shadow-lg shadow-black/30 border border-cyan-500/20 hover:border-cyan-500/50 transition-colors duration-300"
       style={{ opacity: 0 }}
     >
       {/* Image */}
@@ -50,13 +50,17 @@ const CategoryCard = ({ category, image, index }) => {
           src={image}
           alt={category}
           className="h-full w-full object-cover"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "https://images.unsplash.com/photo-1544551763-46a8e13571d8?w=800&h=400&fit=crop";
+          }}
         />
 
         {/* Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
 
-        {/* Number */}
-        <div className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white backdrop-blur-md">
+        {/* Number Badge */}
+        <div className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-cyan-500/20 text-sm font-bold text-white backdrop-blur-md border border-cyan-400/30">
           {String(index + 1).padStart(2, "0")}
         </div>
 
@@ -69,18 +73,18 @@ const CategoryCard = ({ category, image, index }) => {
       </div>
 
       {/* Bottom content */}
-      <div className="flex items-center justify-between p-5">
-        <span className="text-sm font-medium text-slate-500">
+      <div className="flex items-center justify-between p-5 bg-slate-900/50">
+        <span className="text-sm font-medium text-slate-400 group-hover:text-cyan-400 transition-colors">
           Explore category
         </span>
 
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 transition-colors duration-300 group-hover:bg-cyan-500 group-hover:text-white">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 transition-all duration-300 group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:to-blue-600 group-hover:text-white group-hover:border-transparent group-hover:shadow-lg group-hover:shadow-cyan-500/30">
           →
         </span>
       </div>
 
-      {/* Hover border */}
-      <div className="pointer-events-none absolute inset-0 rounded-3xl border border-transparent transition-colors duration-300 group-hover:border-cyan-400" />
+      {/* Hover border glow */}
+      <div className="pointer-events-none absolute inset-0 rounded-3xl border border-transparent transition-colors duration-300 group-hover:border-cyan-400/40 group-hover:shadow-[inset_0_0_30px_rgba(6,182,212,0.05)]" />
     </div>
   );
 };

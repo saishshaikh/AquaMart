@@ -118,10 +118,17 @@ function AddItem() {
         formDataToSend.append('image', image);
       }
 
+      const token = localStorage.getItem('token');
       const res = await axios.post(
         `${serverUrl}/api/item/add-item`,
         formDataToSend,
-        { withCredentials: true }
+        { 
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          withCredentials: true 
+        }
       );
 
       if (res.data.success) {

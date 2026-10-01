@@ -22,7 +22,13 @@ const shopOrderItemsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    name: {
+        type: String
+    },
     itemImage: {
+        type: String
+    },
+    image: {
         type: String
     }
 }, { timestamps: true });
@@ -53,7 +59,7 @@ const shopOrderSchema = new mongoose.Schema({
     shopOrderItems: [shopOrderItemsSchema],
     shopStatus: {
         type: String,
-        enum: ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
+        enum: ['pending', 'confirmed', 'processing', 'ready_for_pickup', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
         default: 'pending'
     }
 }, { timestamps: true });
@@ -81,7 +87,7 @@ const orderSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['cod', 'online'],
+        enum: ['cod', 'online', 'card', 'upi'],
         required: true
     },
     paymentStatus: {
@@ -115,16 +121,30 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    couponCode: {
+        type: String,
+        default: ""
+    },
     shopOrders: [shopOrderSchema],
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
+        enum: ['pending', 'confirmed', 'processing', 'ready_for_pickup', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'],
         default: 'pending'
+    },
+    // 🔐 Secure Delivery OTP
+    deliveryOtp: {
+        type: String,
+        default: () => Math.floor(1000 + Math.random() * 9000).toString()
+    },
+    isOtpVerified: {
+        type: Boolean,
+        default: false
     },
     // Order tracking timestamps
     orderPlacedAt: { type: Date, default: Date.now },
     confirmedAt: Date,
     processingAt: Date,
+    readyForPickupAt: Date,
     shippedAt: Date,
     outForDeliveryAt: Date,
     deliveredAt: Date,
@@ -133,11 +153,18 @@ const orderSchema = new mongoose.Schema({
     trackingId: { type: String },
     estimatedDeliveryDate: { type: Date },
 
-    // 🚀 NEW: Delivery Boy Details (Integrated into Order Model)
+    // Tracking History
+    trackingHistory: [{
+        status: { type: String },
+        timestamp: { type: Date, default: Date.now },
+        note: { type: String }
+    }],
+
+    // 🚀 Delivery Details
     deliveryDetails: {
         assignedTo: { 
             type: mongoose.Schema.Types.ObjectId, 
-            ref: "DeliveryBoy", // Reference to your DeliveryBoy model
+            ref: "User", // Reference to User model (delivery partners have role 'delivery')
             default: null 
         },
         assignedAt: { type: Date },
@@ -196,6 +223,7 @@ orderSchema.pre('findOneAndUpdate', async function() {
         const timestampMap = {
             'confirmed': 'confirmedAt',
             'processing': 'processingAt',
+            'ready_for_pickup': 'readyForPickupAt',
             'shipped': 'shippedAt',
             'out_for_delivery': 'outForDeliveryAt',
             'delivered': 'deliveredAt',
@@ -222,6 +250,7 @@ orderSchema.methods.updateStatusTimestamps = function() {
     const statusTimestampMap = {
         'confirmed': 'confirmedAt',
         'processing': 'processingAt',
+        'ready_for_pickup': 'readyForPickupAt',
         'shipped': 'shippedAt',
         'out_for_delivery': 'outForDeliveryAt',
         'delivered': 'deliveredAt',

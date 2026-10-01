@@ -1,20 +1,37 @@
 import { Server } from "socket.io";
 
+let ioInstance = null;
+
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:5173",
-      methods: ["GET", "POST"],
+      origin: (origin, callback) => callback(null, true),
+      methods: ["GET", "POST", "PUT", "DELETE"],
       credentials: true
     }
   });
 
+  ioInstance = io;
+
   io.on("connection", (socket) => {
     console.log("✅ Socket Connected:", socket.id);
 
+    socket.on("join-order", (orderId) => {
+      if (orderId) {
+        socket.join(`order:${orderId}`);
+      }
+    });
+
+    socket.on("join-user", (userId) => {
+      if (userId) {
+        socket.join(`user:${userId}`);
+      }
+    });
+
     socket.on("update-location", (data) => {
-      console.log("📍 Live Location Update:", data);
-      io.emit(`location:${data.orderId}`, { lat: data.lat, lng: data.lng });
+      if (data?.orderId) {
+        io.emit(`location:${data.orderId}`, { lat: data.lat, lng: data.lng });
+      }
     });
 
     socket.on("disconnect", () => {
@@ -25,5 +42,7 @@ const initializeSocket = (httpServer) => {
   return io;
 };
 
-// ✅ Yeh import karna hoga - DEFAULT EXPORT
+const getIO = () => ioInstance;
+
+export { initializeSocket, getIO };
 export default initializeSocket;

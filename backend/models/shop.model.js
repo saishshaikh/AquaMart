@@ -26,13 +26,25 @@ const shopSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    pincode: {
+        type: String,
+        default: ""
+    },
+    rating: {
+        type: Number,
+        default: 4.8
+    },
+    totalRatings: {
+        type: Number,
+        default: 12
+    },
     // 🟢 Shop ki category (Dry Fish, Fresh Fish etc.)
     shopCategory: {
         type: String,
-        enum: ["Fresh Fish Market", "Dry Fish Store", "Seafood Speciality", "Aqua Mart", "Other"],
-        required: true
+        default: "Fresh Seafood",
+        trim: true
     },
-    // 🟡 Items ka array (Screenshot wala line)
+    // 🟡 Items ka array
     items: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Item"

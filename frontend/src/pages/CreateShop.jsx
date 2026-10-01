@@ -14,7 +14,6 @@ function CreateShop() {
   const { myShopData } = useSelector((state) => state.owner);
   const { userData, city: reduxCity, address: reduxAddress } = useSelector((state) => state.user);
 
-  // Hook call to fetch city/address if not already present
   useGetCity();
 
   const [name, setName] = useState(myShopData?.name || "");
@@ -32,7 +31,6 @@ function CreateShop() {
   const [error, setError] = useState('');
   const [locationDetected, setLocationDetected] = useState(false);
 
-  // ✅ Admin/User dashboard ki saved city & address se form ko sync karne ke liye
   useEffect(() => {
     if (reduxCity) {
       setCity(reduxCity);
@@ -51,7 +49,6 @@ function CreateShop() {
     }
   }, [reduxCity, reduxAddress, userData]);
 
-  // ✅ Live Location Detect with FULL ADDRESS
   const detectLiveLocation = () => {
     if (!navigator.geolocation) {
       alert("❌ Geolocation is not supported by your browser");
@@ -64,91 +61,43 @@ function CreateShop() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        console.log("📍 GPS Coordinates:", latitude, longitude);
-        
         try {
-          let fullAddress = '';
-          let detectedCity = '';
-          let detectedState = '';
-          let detectedPincode = '';
-          let streetName = '';
-
-          // ✅ Method 1: Try OpenStreetMap (Free, No API Key)
           const res = await axios.get(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-            {
-              headers: {
-                'User-Agent': 'Synexa.Ai - Shop Location Detection'
-              }
-            }
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
           );
-
-          console.log("🔍 OSM Response:", res.data);
 
           if (res.data && res.data.address) {
             const addr = res.data.address;
-            
-            // ✅ Extract ALL details
-            detectedCity = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.suburb || "";
-            detectedState = addr.state || addr.region || "";
-            detectedPincode = addr.postcode || "";
-            streetName = addr.road || addr.street || addr.suburb || "";
+            const detectedCity = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
+            const detectedState = addr.state || addr.region || "";
+            const detectedPincode = addr.postcode || "";
+            const roadName = addr.road || "";
             const houseNumber = addr.house_number || "";
-            const neighbourhood = addr.neighbourhood || "";
-            const hamlet = addr.hamlet || "";
+            const suburb = addr.suburb || "";
 
-            // ✅ Build FULL ADDRESS
-            fullAddress = "";
+            let fullAddress = "";
             if (houseNumber) fullAddress += houseNumber + ", ";
-            if (streetName) fullAddress += streetName + ", ";
-            if (neighbourhood) fullAddress += neighbourhood + ", ";
-            if (hamlet) fullAddress += hamlet + ", ";
-            if (detectedCity) fullAddress += detectedCity + ", ";
-            if (detectedState) fullAddress += detectedState + ", ";
-            if (detectedPincode) fullAddress += detectedPincode;
+            if (roadName) fullAddress += roadName + ", ";
+            if (suburb) fullAddress += suburb + ", ";
+            fullAddress += detectedCity || "";
 
-            fullAddress = fullAddress.replace(/,\s*$/, '').trim();
-
-            // ✅ If no street, use display_name
-            if (!streetName || streetName === detectedCity) {
-              fullAddress = res.data.display_name || fullAddress;
+            if (detectedCity) {
+              setCity(detectedCity);
+              setState(detectedState);
+              setAddress(fullAddress);
+              setPincode(detectedPincode);
+              setLocationDetected(true);
             }
-
-            console.log("🏠 Full Address:", fullAddress);
-            console.log("🎯 City:", detectedCity);
-            console.log("🏠 Street:", streetName);
-            console.log("📮 Pincode:", detectedPincode);
           }
-
-          // ✅ Update form with detected location
-          if (detectedCity) {
-            setCity(detectedCity);
-            setState(detectedState);
-            setAddress(fullAddress);
-            setPincode(detectedPincode);
-            setLocationDetected(true);
-            
-            alert("📍 Live location detected successfully!\n" + fullAddress);
-          } else {
-            setError("Could not fetch complete address. Please enter manually.");
-          }
-
         } catch (err) {
-          console.error("Error fetching location details:", err);
-          setError("Failed to fetch address from coordinates. Please enter manually.");
+          console.error("Error fetching location:", err);
         } finally {
           setDetectingLocation(false);
         }
       },
       (error) => {
-        console.error(error);
         setDetectingLocation(false);
-        let errorMessage = "Unable to retrieve your location. Please allow location permissions.";
-        if (error.code === 1) errorMessage = "❌ Location access denied. Please enable location permissions.";
-        else if (error.code === 2) errorMessage = "❌ Location unavailable. Please try again.";
-        else if (error.code === 3) errorMessage = "❌ Location request timed out. Please try again.";
-        setError(errorMessage);
-        alert(errorMessage);
+        alert("Location access denied or unavailable.");
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
@@ -178,47 +127,49 @@ function CreateShop() {
       formDataToSend.append('city', city);
       formDataToSend.append('state', state);
       formDataToSend.append('address', address);
-      formDataToSend.append('pincode', pincode);
-      formDataToSend.append('shopCategory', shopCategory);
+      if (pincode) formDataToSend.append('pincode', pincode);
+      if (shopCategory) formDataToSend.append('shopCategory', shopCategory);
+      if (backendImage) formDataToSend.append('image', backendImage);
 
-      if (backendImage) {
-        formDataToSend.append('image', backendImage);
-      }
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${serverUrl}/api/shop/create-edit`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        },
+        withCredentials: true,
+      });
 
-      const res = await axios.post(
-        `${serverUrl}/api/shop/create-shop`,
-        formDataToSend,
-        { withCredentials: true }
-      );
-
-      if (res.data.success) {
+      if (res.data?.success) {
         dispatch(setMyShopData(res.data.shop));
-        alert('Shop created/updated successfully!');
+        alert("🎉 Shop created successfully!");
         navigate('/home');
       }
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Failed to create shop. Please try again.');
+      setError(err.response?.data?.message || "Failed to create shop.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4 flex justify-center items-start">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8 border border-gray-100">
+    <div className="min-h-screen bg-[#070d18] text-slate-100 py-10 px-4 flex justify-center items-start relative overflow-hidden">
+      <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
+
+      <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-2xl p-6 sm:p-8 border border-slate-800 relative z-10">
         
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/home')} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <ArrowLeft size={20} className="text-gray-600" />
+            <button onClick={() => navigate('/home')} className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors">
+              <ArrowLeft size={18} />
             </button>
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Store size={24} className="text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Store size={20} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Create Your Shop</h2>
-              <p className="text-sm text-gray-500">Start selling fresh seafood today!</p>
+              <h2 className="text-xl sm:text-2xl font-black text-white">Create Your Shop</h2>
+              <p className="text-xs text-slate-400">Register your seafood business on AquaMart</p>
             </div>
           </div>
 
@@ -226,158 +177,127 @@ function CreateShop() {
             type="button"
             onClick={detectLiveLocation}
             disabled={detectingLocation}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition border ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition border ${
               locationDetected 
-                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' 
-                : 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border-cyan-200'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20'
             }`}
           >
-            <LocateFixed size={14} className={detectingLocation ? "animate-spin" : ""} />
-            {detectingLocation ? "Detecting..." : locationDetected ? "📍 Location Found" : "Detect Live Location"}
+            <LocateFixed size={13} className={detectingLocation ? "animate-spin" : ""} />
+            {detectingLocation ? "Detecting..." : locationDetected ? "📍 GPS Locked" : "Detect Location"}
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
               {error}
-            </div>
-          )}
-
-          {locationDetected && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
-              <CheckCircle size={16} />
-              Location detected successfully! Address auto-filled below.
             </div>
           )}
 
           {/* Shop Name */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Shop Name *</label>
+            <label className="text-xs font-semibold text-slate-300">Shop Name *</label>
             <input 
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Fresh Catch Aqua Mart" 
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             />
           </div>
 
-          {/* Image Upload */}
+          {/* Shop Image */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Shop Image</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition-colors cursor-pointer relative">
+            <label className="text-xs font-semibold text-slate-300">Shop Banner Image</label>
+            <div className="border border-dashed border-slate-700 hover:border-cyan-500/50 rounded-2xl p-4 text-center transition-colors cursor-pointer relative bg-slate-950/50">
               <input type="file" accept="image/*" onChange={handleImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
               {frontendImage ? (
-                <img src={frontendImage} alt="Shop Preview" className="h-24 w-auto mx-auto rounded object-contain" />
+                <img src={frontendImage} alt="Shop Preview" className="h-28 w-auto mx-auto rounded-xl object-cover border border-slate-700" />
               ) : (
-                <div className="flex flex-col items-center gap-2 text-gray-500">
-                  <UploadCloud size={32} />
-                  <span className="text-sm">Click to upload shop image</span>
+                <div className="flex flex-col items-center gap-2 text-slate-500 py-3">
+                  <UploadCloud size={28} className="text-cyan-400" />
+                  <span className="text-xs text-slate-400">Click to upload shop front photo</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* City & State */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">City *</label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                  type="text" 
-                  value={city} 
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Mumbai" 
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <label className="text-xs font-semibold text-slate-300">City *</label>
+              <input 
+                type="text" 
+                value={city} 
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Mumbai" 
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">State *</label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                  type="text" 
-                  value={state} 
-                  onChange={(e) => setState(e.target.value)}
-                  placeholder="Maharashtra" 
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <label className="text-xs font-semibold text-slate-300">State *</label>
+              <input 
+                type="text" 
+                value={state} 
+                onChange={(e) => setState(e.target.value)}
+                placeholder="Maharashtra" 
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              />
             </div>
           </div>
 
-          {/* Pincode */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Pincode</label>
-            <input 
-              type="text" 
-              value={pincode} 
-              onChange={(e) => setPincode(e.target.value)}
-              placeholder="400001" 
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          {/* Category & Pincode */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">Shop Specialty</label>
+              <input 
+                type="text" 
+                value={shopCategory} 
+                onChange={(e) => setShopCategory(e.target.value)}
+                placeholder="e.g. Fresh Fish & Prawns" 
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">Pincode</label>
+              <input 
+                type="text" 
+                value={pincode} 
+                onChange={(e) => setPincode(e.target.value)}
+                placeholder="400001" 
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
           </div>
 
           {/* Address */}
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Address *</label>
-            <input 
-              type="text" 
+            <label className="text-xs font-semibold text-slate-300">Complete Shop Address *</label>
+            <textarea 
               value={address} 
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Shop No, Street, Area" 
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Shop No, Fish Market Road, Landmark" 
+              required
+              rows={2}
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500 resize-none"
             />
           </div>
 
-          {/* Shop Category */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Shop Category</label>
-            <div className="relative">
-              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                list="shopCategories"
-                value={shopCategory}
-                onChange={(e) => setShopCategory(e.target.value)}
-                placeholder="Type or select category (e.g. Fresh Fish)"
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              />
-              <datalist id="shopCategories">
-                <option value="Fresh Fish" />
-                <option value="Dry Fish" />
-                <option value="Seafood Restaurant" />
-                <option value="Fish Market" />
-                <option value="Aquarium Shop" />
-              </datalist>
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
-            className={`w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
+            className="w-full mt-4 py-3.5 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2"
           >
-            {loading ? (
-              <>
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                Creating Shop...
-              </>
-            ) : (
-              <>
-                <CheckCircle size={20} />
-                Create Shop
-              </>
-            )}
+            {loading ? "Publishing Shop..." : "Publish Shop on AquaMart"}
           </button>
 
         </form>
+
       </div>
     </div>
   );

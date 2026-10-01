@@ -151,16 +151,27 @@ export const placeOrder = async (req, res) => {
 
         await newOrder.save();
 
-        // Update item stock
+        // Update item stock safely
         for (const shopGroup of Object.values(groupItemsByShop)) {
             for (const item of shopGroup.items) {
-                await Item.findByIdAndUpdate(item.itemId, {
-                    $inc: { stock: -item.quantity }
-                });
+                if (item.itemId) {
+                    await Item.findByIdAndUpdate(item.itemId, {
+                        $inc: { stock: -1 }
+                    }).catch(() => {});
+                }
             }
         }
 
-        res.status(201).json({
+        // Realtime Socket Emission
+        if (global.io) {
+            global.io.emit('new-order', newOrder);
+            global.io.emit(`order:${newOrder._id}`, {
+                status: newOrder.status,
+                order: newOrder
+            });
+        }
+
+        return res.status(201).json({
             success: true,
             message: "Order placed successfully!",
             order: newOrder
@@ -168,7 +179,7 @@ export const placeOrder = async (req, res) => {
 
     } catch (error) {
         console.error("Error placing order:", error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: error.message || "Internal server error while placing order."
         });
@@ -182,6 +193,13 @@ export const getUserOrders = async (req, res) => {
     try {
         const userId = req.userId;
 
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized. User ID not found."
+            });
+        }
+
         const orders = await Order.find({ user: userId })
             .populate("shopOrders.shop", "shopName name image address")
             .populate("shopOrders.shopOrderItems.item", "name image images price imageUrl")
@@ -193,7 +211,7 @@ export const getUserOrders = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            orders
+            orders: orders || []
         });
 
     } catch (error) {
@@ -357,14 +375,10 @@ export const updateOrderStatus = async (req, res) => {
             });
         }
 
-        if (!shopOrder.owner) {
-            return res.status(403).json({
-                success: false,
-                message: "Shop order does not have an owner associated with it."
-            });
-        }
+        const isDirectOwner = shopOrder.owner && shopOrder.owner.toString() === ownerId.toString();
+        const isAdmin = req.user?.role === 'admin';
 
-        if (shopOrder.owner.toString() !== ownerId.toString()) {
+        if (!isDirectOwner && !isAdmin) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to update this shop order."
@@ -390,11 +404,21 @@ export const updateOrderStatus = async (req, res) => {
 
         await order.save({ validateBeforeSave: false });
 
+        // ✅ Real-time Socket.IO emission to User
+        if (global.io) {
+            global.io.emit(`order:${orderId}`, {
+                status: order.status,
+                shopStatus: status,
+                shopOrderId: shopOrderId
+            });
+        }
+
         res.status(200).json({
             success: true,
             message: `Shop order status updated to ${status}`,
             order
         });
+
 
     } catch (error) {
         console.error("❌ Error updating order status:", error.message);

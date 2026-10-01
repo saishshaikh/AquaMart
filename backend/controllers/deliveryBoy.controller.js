@@ -9,20 +9,58 @@ import jwt from "jsonwebtoken";
 export const registerDeliveryBoy = async (req, res) => {
   try {
     const { name, email, password, mobile, city } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: "Name, email and password are required" });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "User already exists with this email" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
       fullName: name,
       email,
       password: hashedPassword,
-      mobile,
-      city,
+      mobile: mobile || "",
+      city: city || "",
       role: "delivery",
+      deliveryStatus: "available"
     });
 
     await user.save();
-    res.status(201).json({ success: true, message: "Delivery Boy Registered!" });
+
+    const token = jwt.sign(
+      { id: user._id, role: "delivery" },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Delivery Partner Registered Successfully!",
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role,
+        city: user.city
+      }
+    });
   } catch (error) {
+    console.error("Register Delivery Boy Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -33,11 +71,24 @@ export const registerDeliveryBoy = async (req, res) => {
 export const loginDeliveryBoy = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email, role: "delivery" });
-    if (!user) return res.status(404).json({ success: false, message: "Boy not found" });
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required" });
+    }
+
+    const user = await User.findOne({ 
+      email, 
+      role: { $in: ["delivery", "delivery_boy", "deliveryboy", "Delivery"] } 
+    });
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Delivery partner not found with this email" });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ success: false, message: "Invalid credentials" });
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
+    }
 
     const token = jwt.sign(
       { id: user._id, role: "delivery" },
@@ -45,8 +96,30 @@ export const loginDeliveryBoy = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.status(200).json({ success: true, token, user });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Delivery partner logged in successfully",
+      token, 
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role,
+        city: user.city,
+        activeOrderId: user.activeOrderId,
+        deliveryStatus: user.deliveryStatus
+      }
+    });
   } catch (error) {
+    console.error("Login Delivery Boy Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -112,7 +185,7 @@ export const acceptDelivery = async (req, res) => {
           },
         },
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     await User.findByIdAndUpdate(boyId, {
@@ -186,11 +259,12 @@ export const getActiveOrder = async (req, res) => {
 };
 
 // ==========================================
-// ✅ 7. COMPLETE DELIVERY (FIXED FOR USER VIEW)
+// ✅ 7. COMPLETE DELIVERY (WITH OTP VERIFICATION)
 // ==========================================
 export const completeDelivery = async (req, res) => {
   try {
     const { orderId } = req.params;
+    const { otp } = req.body;
     const boyId = req.userId;
 
     const order = await Order.findById(orderId);
@@ -203,10 +277,27 @@ export const completeDelivery = async (req, res) => {
       return res.status(403).json({ success: false, message: "You are not assigned to this order" });
     }
 
+    // 🔐 Secure Delivery OTP Validation
+    if (order.deliveryOtp) {
+      if (!otp) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Delivery OTP is required. Please ask the customer for their 4-digit OTP." 
+        });
+      }
+      if (otp.toString().trim() !== order.deliveryOtp.toString().trim()) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Incorrect OTP entered! Please verify with customer." 
+        });
+      }
+    }
+
     // 🟢 UPDATE MAIN STATUS
     order.status = 'delivered';
+    order.isOtpVerified = true;
     order.deliveryDetails.deliveredAt = new Date();
-    order.deliveryDetails.deliveryNotes = 'Order successfully delivered';
+    order.deliveryDetails.deliveryNotes = 'Order successfully delivered with OTP verification';
 
     // 🟢 FIX: UPDATE ALL SHOP ORDER STATUSES (SO USER SEES 'DELIVERED')
     order.shopOrders.forEach(shopOrder => {
@@ -220,7 +311,7 @@ export const completeDelivery = async (req, res) => {
     order.trackingHistory.push({
       status: 'delivered',
       timestamp: new Date(),
-      note: `Order delivered by ${order.deliveryDetails.deliveryBoyName}`
+      note: `Order verified with OTP and delivered by ${order.deliveryDetails.deliveryBoyName}`
     });
 
     await order.save({ validateBeforeSave: false });
@@ -238,9 +329,15 @@ export const completeDelivery = async (req, res) => {
         status: "delivered",
         deliveredAt: new Date(),
       });
+      global.io.emit(`notification:${order.user}`, {
+        title: "Order Delivered 🎉",
+        message: `Your seafood order #${order._id.toString().slice(-6).toUpperCase()} has been delivered successfully! Enjoy your fresh catch!`,
+        type: "delivery",
+        orderId: order._id
+      });
     }
 
-    res.status(200).json({ success: true, message: "Order marked as delivered!" });
+    res.status(200).json({ success: true, message: "Order marked as delivered with OTP verification!" });
   } catch (error) {
     console.error("❌ Error completing delivery:", error.message);
     res.status(500).json({ success: false, message: error.message });

@@ -4,9 +4,10 @@ import * as maplibregl from 'maplibre-gl'; // ✅ YEH LINE BADLI HAI
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { serverUrl } from '../App';
 
-const GEOAPIFY_KEY = "YOUR_GEOAPIFY_API_KEY"; 
+const GEOAPIFY_KEY = import.meta.env.VITE_GEOAPIKEY; 
 
 function LiveTrackingMap({ orderId, deliveryAddress }) {
+
   const mapContainer = useRef(null);
   const map = useRef(null);
   const deliveryMarkerRef = useRef(null);
@@ -14,9 +15,35 @@ function LiveTrackingMap({ orderId, deliveryAddress }) {
 
   useEffect(() => {
     if (!map.current && mapContainer.current) {
+      const mapStyle = GEOAPIFY_KEY && GEOAPIFY_KEY.trim() !== ''
+        ? `https://maps.geoapify.com/v1/styles/osm-bright/style.json?apiKey=${GEOAPIFY_KEY}`
+        : {
+            version: 8,
+            sources: {
+              'osm-tiles': {
+                type: 'raster',
+                tiles: [
+                  'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                ],
+                tileSize: 256,
+                attribution: '&copy; OpenStreetMap'
+              }
+            },
+            layers: [
+              {
+                id: 'osm-tiles-layer',
+                type: 'raster',
+                source: 'osm-tiles',
+                minzoom: 0,
+                maxzoom: 19
+              }
+            ]
+          };
+
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: `https://maps.geoapify.com/v1/styles/osm-bright/style.json?apiKey=${GEOAPIFY_KEY}`,
+        style: mapStyle,
         center: [deliveryAddress?.lng || 72.9781, deliveryAddress?.lat || 19.2183],
         zoom: 12
       });

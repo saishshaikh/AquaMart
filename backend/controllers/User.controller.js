@@ -2,8 +2,6 @@ import User from "../models/user.model.js";
 
 export const getUser = async (req, res) => {
   try {
-    console.log("👤 Getting user with ID:", req.userId);
-    
     if (!req.userId) {
       return res.status(401).json({
         success: false,
@@ -14,28 +12,27 @@ export const getUser = async (req, res) => {
     const user = await User.findById(req.userId).select("-password");
 
     if (!user) {
-      console.log("❌ User not found in database");
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
-    console.log("✅ User found:", user.email);
-    console.log("✅ User role:", user.role);
-    console.log("✅ Full user object:", user);
-
-    // Ensure all fields are included, set defaults if missing
     const userData = {
       id: user._id,
+      _id: user._id,
       fullName: user.fullName,
       email: user.email,
-      mobile: user.mobile,
-      role: user.role || 'user',
-      city: user.city || '',
-      // 🚀 DELIVERY BOY FIELDS
+      mobile: user.mobile || "",
+      role: user.role || "user",
+      city: user.city || "",
+      state: user.state || "",
+      address: user.address || "",
+      pincode: user.pincode || "",
       activeOrderId: user.activeOrderId || null,
-      deliveryStatus: user.deliveryStatus || 'available',
+      deliveryStatus: user.deliveryStatus || "available",
+      currentLocation: user.currentLocation || { lat: 0, lng: 0 },
+      totalDeliveries: user.totalDeliveries || 0,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
@@ -56,8 +53,8 @@ export const getUser = async (req, res) => {
 
 export const updateCity = async (req, res) => {
   try {
-    const userId = req.userId || req.id || req.user?._id;
-    const { city } = req.body;
+    const userId = req.userId || req.user?._id;
+    const { city, address, state, pincode, latitude, longitude } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -66,17 +63,19 @@ export const updateCity = async (req, res) => {
       });
     }
 
-    if (!city) {
-      return res.status(400).json({
-        success: false,
-        message: "City is required",
-      });
+    const updateFields = {};
+    if (city !== undefined) updateFields.city = city;
+    if (address !== undefined) updateFields.address = address;
+    if (state !== undefined) updateFields.state = state;
+    if (pincode !== undefined) updateFields.pincode = pincode;
+    if (latitude !== undefined && longitude !== undefined) {
+      updateFields.currentLocation = { lat: latitude, lng: longitude };
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { city },
-      { new: true }
+      updateFields,
+      { returnDocument: 'after' }
     ).select("-password");
 
     if (!updatedUser) {
@@ -86,24 +85,26 @@ export const updateCity = async (req, res) => {
       });
     }
 
-    console.log("✅ City updated successfully to:", city);
-
-    // Return structured user data with role
     const userData = {
       id: updatedUser._id,
+      _id: updatedUser._id,
       fullName: updatedUser.fullName,
       email: updatedUser.email,
-      mobile: updatedUser.mobile,
-      role: updatedUser.role || 'user',
-      city: updatedUser.city || '',
-      // 🚀 DELIVERY BOY FIELDS
+      mobile: updatedUser.mobile || "",
+      role: updatedUser.role || "user",
+      city: updatedUser.city || "",
+      state: updatedUser.state || "",
+      address: updatedUser.address || "",
+      pincode: updatedUser.pincode || "",
       activeOrderId: updatedUser.activeOrderId || null,
-      deliveryStatus: updatedUser.deliveryStatus || 'available',
+      deliveryStatus: updatedUser.deliveryStatus || "available",
+      currentLocation: updatedUser.currentLocation || { lat: 0, lng: 0 },
+      totalDeliveries: updatedUser.totalDeliveries || 0
     };
 
     return res.status(200).json({
       success: true,
-      message: "City updated successfully",
+      message: "Location/City updated successfully",
       user: userData,
     });
 

@@ -12,13 +12,13 @@ const useGetMyShop = () => {
   const dispatch = useDispatch();
   
   // ✅ Redux store se current logged-in user slice nikalein
-  const { user } = useSelector((state) => state.user || state.auth || {});
+  const userData = useSelector((state) => state.user?.userData);
 
   const fetchMyShop = useCallback(async () => {
     // 🔴 Role Guard: Agar User logged in nahi hai YA owner/admin nahi hai toh API hit mat karo
-    const role = user?.role?.trim()?.toLowerCase();
+    const role = userData?.role?.trim()?.toLowerCase();
     
-    if (!user || (role !== "owner" && role !== "admin")) {
+    if (!userData || (role !== "owner" && role !== "admin")) {
       setLoading(false);
       return;
     }
@@ -27,9 +27,11 @@ const useGetMyShop = () => {
     setError(null);
 
     try {
+      const token = localStorage.getItem('token');
       const res = await axios.get(
         `${serverUrl}/api/shop/my-shop`,
         {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           withCredentials: true,
         }
       );
@@ -57,7 +59,7 @@ const useGetMyShop = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, dispatch]);
+  }, [userData, dispatch]);
 
   useEffect(() => {
     fetchMyShop();

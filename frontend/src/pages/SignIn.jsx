@@ -6,7 +6,7 @@ import axios from "axios";
 import { Link, useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, isFirebaseConfigured } from '../firebase';
 import { setUserData } from '../redux/userSlice.js'; 
 
 gsap.registerPlugin(useGSAP);
@@ -95,9 +95,13 @@ const SignIn = () => {
     setIsLoading(true);
 
     try {
+      if (!isFirebaseConfigured || !auth) {
+        throw new Error("Google Sign-In is not configured. Please add your Firebase API key (VITE_FIREBASE_API) to frontend/.env or login using email & password.");
+      }
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
 
       console.log("Google User:", user);
 

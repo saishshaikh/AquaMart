@@ -1,26 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import axios from 'axios';
-import { Fish, ArrowLeft, Upload } from 'lucide-react';
+import { Fish, ArrowLeft, Upload, Sparkles } from 'lucide-react';
+import { serverUrl } from '../App';
 
 function EditItem() {
   const { itemId } = useParams();
   const navigate = useNavigate();
+  const { myShopData } = useSelector((state) => state.owner);
+  const { items } = useSelector((state) => state.user);
 
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     price: '',
+    description: '',
     image: null
   });
   const [preview, setPreview] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Item ki purani details fetch karna (optional agar aapke paas single item fetch ki API hai, ya aap state se bhej sakte hain)
   useEffect(() => {
-    // Agar aapke paas item details fetch karne ki API hai toh yahan call karein,
-    // ya fir Redux/Location state se data le sakte hain.
-  }, [itemId]);
+    if (itemId) {
+      const foundItem = 
+        myShopData?.items?.find(i => (i._id || i.id) === itemId) ||
+        items?.find(i => (i._id || i.id) === itemId);
+
+      if (foundItem) {
+        setFormData({
+          name: foundItem.name || '',
+          category: foundItem.category || '',
+          price: foundItem.price || '',
+          description: foundItem.description || '',
+          image: null
+        });
+        if (foundItem.image) {
+          setPreview(foundItem.image);
+        }
+      }
+    }
+  }, [itemId, myShopData, items]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,103 +63,125 @@ function EditItem() {
     data.append('name', formData.name);
     data.append('category', formData.category);
     data.append('price', formData.price);
+    if (formData.description) data.append('description', formData.description);
     if (formData.image) {
       data.append('image', formData.image);
     }
 
     try {
-      const response = await axios.put(`http://localhost:8000/api/item/edit-item/${itemId}`, data, {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(`${serverUrl}/api/item/edit-item/${itemId}`, data, {
         withCredentials: true,
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.data.success) {
-        alert("Item updated successfully!");
-        navigate('/home'); // ya apne dashboard route par
+        alert("🎉 Catch details updated successfully!");
+        navigate('/home');
       }
     } catch (error) {
       console.error("Error updating item:", error);
-      alert("Failed to update item");
+      alert(error.response?.data?.message || "Failed to update item");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-70px)] bg-gradient-to-b from-[#e0f7fa] via-[#b2ebf2] to-[#80deea] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white/60 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl p-6 sm:p-8">
+    <div className="min-h-screen bg-[#070d18] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
+
+      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 shadow-2xl rounded-3xl p-6 sm:p-8 relative z-10">
         
         <button 
           onClick={() => navigate(-1)} 
-          className="flex items-center gap-1 text-gray-600 hover:text-gray-800 mb-4 text-sm font-medium"
+          className="flex items-center gap-1.5 text-slate-400 hover:text-white mb-4 text-xs font-medium transition-colors"
         >
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={14} className="text-cyan-400" /> Back
         </button>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/30 text-white">
-            <Fish size={24} />
+          <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <Fish size={20} />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Edit Catch</h2>
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-white">Edit Seafood Item</h2>
+            <p className="text-xs text-slate-400">Update price, name, or photo</p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Catch Name</label>
+            <label className="text-xs font-semibold text-slate-300 block mb-1">Item Name</label>
             <input 
               type="text" 
               name="name" 
               value={formData.name} 
-              onChange={handleChange}
-              placeholder="e.g. Pomfret" 
-              className="w-full px-4 py-2 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 text-gray-800"
-              required 
+              onChange={handleChange} 
+              required
+              className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <input 
-              type="text" 
-              name="category" 
-              value={formData.category} 
-              onChange={handleChange}
-              placeholder="e.g. Crabs / Prawns" 
-              className="w-full px-4 py-2 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 text-gray-800"
-              required 
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Category</label>
+              <input 
+                type="text" 
+                name="category" 
+                value={formData.category} 
+                onChange={handleChange} 
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Price (₹/kg)</label>
+              <input 
+                type="number" 
+                name="price" 
+                value={formData.price} 
+                onChange={handleChange} 
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
-            <input 
-              type="number" 
-              name="price" 
-              value={formData.price} 
-              onChange={handleChange}
-              placeholder="e.g. 500" 
-              className="w-full px-4 py-2 bg-white/50 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 text-gray-800"
-              required 
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Update Image</label>
-            <input 
-              type="file" 
-              accept="image/*"
-              onChange={handleImageChange}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
-            />
+            <label className="text-xs font-semibold text-slate-300 block mb-1">Item Image</label>
+            <div className="border border-dashed border-slate-700 rounded-xl p-3 text-center hover:border-cyan-500/50 transition-colors relative bg-slate-950/50 cursor-pointer">
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleImageChange} 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              {preview ? (
+                <img src={preview} alt="Preview" className="h-24 mx-auto rounded-lg object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-1 text-slate-500 py-2">
+                  <Upload size={20} className="text-cyan-400" />
+                  <span className="text-[11px]">Upload new item image</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full mt-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-cyan-500/30"
+            className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2"
           >
-            {loading ? "Updating..." : "Save Changes"}
+            {loading ? "Saving Changes..." : "Save Changes"}
           </button>
+
         </form>
 
       </div>

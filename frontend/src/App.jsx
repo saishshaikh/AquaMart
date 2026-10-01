@@ -14,6 +14,7 @@ import EditItem from "./pages/EditItem";
 // Cart & Checkout
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage"; 
+import ProductDetails from "./pages/ProductDetails"; 
 
 // Order Pages
 import OrderPlaced from "./pages/OrderPlaced";
@@ -27,7 +28,9 @@ import useGetMyShop from "./hooks/useGetMyShop";
 import { useGetShopsByCity } from "./hooks/useGetShopsByCity";
 import { useGetItemByCity } from "./hooks/useGetItemByCity";
 
-export const serverUrl = "http://localhost:8000";
+import AquaBot from "./components/AquaBot";
+
+export const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8000";
 
 function App() {
   const { userData, city } = useSelector((state) => state.user);
@@ -35,11 +38,12 @@ function App() {
   useGetCurrentUser();
   useGetCity();
   useGetMyShop();
-  useGetShopsByCity();
+  useGetShopsByCity(city);
   useGetItemByCity(city);
   
   return (
-    <Routes>
+    <>
+      <Routes>
 
       {/* Root */}
       <Route
@@ -101,12 +105,28 @@ function App() {
         }
       />
 
+      {/* Dashboard Route Aliases */}
+      <Route path="/admin-dashboard" element={<Navigate to="/home" replace />} />
+      <Route path="/delivery-dashboard" element={<Navigate to="/home" replace />} />
+
       {/* Cart Page */}
       <Route
         path="/cart"
         element={
           userData ? (
             <CartPage />
+          ) : (
+            <Navigate to="/signin" replace />
+          )
+        }
+      />
+
+      {/* Product Details Page */}
+      <Route
+        path="/product/:id"
+        element={
+          userData ? (
+            <ProductDetails />
           ) : (
             <Navigate to="/signin" replace />
           )
@@ -207,6 +227,10 @@ function App() {
       />
 
     </Routes>
+
+    {/* Global Floating AI Seafood Concierge Assistant */}
+    <AquaBot />
+    </>
   );
 }
 

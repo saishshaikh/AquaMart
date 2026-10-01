@@ -30,8 +30,8 @@ function Nav1() {
   const rightRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
-  // Cart quantity
-  const totalItemCount = cartList.reduce((total, item) => total + (item.quantity || 1), 0);
+  // Cart item count (distinct items in basket)
+  const totalItemCount = cartList.length;
 
   // Live Pending Orders Count
   const pendingOrderCount = orders.filter(o => 

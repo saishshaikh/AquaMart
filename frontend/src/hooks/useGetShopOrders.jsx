@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
-import { setMyOrders } from "../redux/ownerSlice"; // Path sahi check kar lein
+import { setMyOrders } from "../redux/ownerSlice";
+import { serverUrl } from "../App";
 
 export const useGetShopOrders = () => {
     const dispatch = useDispatch();
@@ -11,7 +12,9 @@ export const useGetShopOrders = () => {
     const fetchShopOrders = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:8000/api/order/shop-orders", {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${serverUrl}/api/order/shop-orders`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
                 withCredentials: true
             });
 

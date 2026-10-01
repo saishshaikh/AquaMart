@@ -5,10 +5,10 @@ import {
   AlertCircle, Phone, User, ArrowLeft, RefreshCw 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const SERVER_URL = "http://localhost:8000";
+import { serverUrl } from '../App';
 
 function ShopOrders() {
+
   const navigate = useNavigate();
   const [shopOrders, setShopOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +28,9 @@ function ShopOrders() {
   const fetchShopOrders = useCallback(async (showLoader = false) => {
     try {
       if (showLoader) setLoading(true);
-      const response = await axios.get(`${SERVER_URL}/api/order/shop-orders`, {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${serverUrl}/api/order/shop-orders`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         withCredentials: true
       });
       if (response.data.success) {
@@ -55,10 +57,14 @@ function ShopOrders() {
   const handleStatusChange = async (orderId, shopOrderId, newStatus) => {
     try {
       setUpdatingStatus((prev) => ({ ...prev, [shopOrderId]: true }));
+      const token = localStorage.getItem('token');
       const response = await axios.put(
-        `${SERVER_URL}/api/order/status/${orderId}/${shopOrderId}`, 
+        `${serverUrl}/api/order/status/${orderId}/${shopOrderId}`, 
         { status: newStatus },
-        { withCredentials: true }
+        { 
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          withCredentials: true 
+        }
       );
       if (response.data.success) {
         setShopOrders((prevOrders) =>

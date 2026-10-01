@@ -1,16 +1,38 @@
 import ImageKit from 'imagekit';
 import fs from "fs";
 
-// ✅ ImageKit Config
-const imagekit = new ImageKit({
-    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
-});
+// ✅ Safe ImageKit Helper
+const getImageKitInstance = () => {
+    const publicKey = process.env.IMAGEKIT_PUBLIC_KEY;
+    const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+    const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
+
+    if (!publicKey || !privateKey || !urlEndpoint) {
+        console.warn("⚠️ ImageKit environment variables missing (IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT). Image upload to ImageKit will be skipped.");
+        return null;
+    }
+
+    try {
+        return new ImageKit({ publicKey, privateKey, urlEndpoint });
+    } catch (err) {
+        console.error("⚠️ Failed to initialize ImageKit:", err.message);
+        return null;
+    }
+};
+
 
 const uploadOnImageKit = async (file) => {
     try {
         if (!file) return null;
+
+        const imagekit = getImageKitInstance();
+        if (!imagekit) {
+            console.log("ℹ️ Skipping ImageKit upload (keys not provided). Returning fallback placeholder image.");
+            if (fs.existsSync(file)) {
+                fs.unlinkSync(file);
+            }
+            return "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&q=80&w=600";
+        }
 
         console.log("📁 Uploading file to ImageKit:", file);
 
@@ -28,13 +50,11 @@ const uploadOnImageKit = async (file) => {
             fs.unlinkSync(file);
         }
 
-        // ✅ ULTIMATE FIX: URL clean karo, endpoint fix karo, aur fallback add karo
+        // ✅ URL clean karo, endpoint fix karo, aur fallback add karo
         let finalUrl = result.url.trim();
         
-        // Agar purana endpoint use ho raha hai, toh naye endpoint se replace karo
         finalUrl = finalUrl.replace("ik.imagekit.io/7ykxzcex8l", "ik.imagekit.io/7ykxzcex8l/aquamart-images");
 
-        // Agar URL mein extension hai lekin load nahi ho raha, toh ?tr=w-600 add karo
         if (!finalUrl.includes("?tr=")) {
             finalUrl += "?tr=w-600";
         }
@@ -49,8 +69,7 @@ const uploadOnImageKit = async (file) => {
         if (file && fs.existsSync(file)) {
             fs.unlinkSync(file);
         }
-        return null;
     }
 };
 
-export default uploadOnImageKit;
+export default uploadOnImageKit;

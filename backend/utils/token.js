@@ -1,10 +1,10 @@
 // utils/GenerateToken.js
 import jwt from "jsonwebtoken";
 
-const GenerateToken = (userId) => {
+const GenerateToken = (userId, role = "user") => {
     try {
         const token = jwt.sign(
-            { id: userId }, // ✅ "id" use kar rahe hain
+            { id: userId, role: role || "user" },
             process.env.JWT_SECRET,
             {
                 expiresIn: "7d",
@@ -12,9 +12,10 @@ const GenerateToken = (userId) => {
         );
         return token;
     } catch (error) {
-        console.log("GENERATE TOKEN ERROR: " + error);
+        console.error("GENERATE TOKEN ERROR: " + error);
         return null;
     }
 };
 
+export { GenerateToken };
 export default GenerateToken;

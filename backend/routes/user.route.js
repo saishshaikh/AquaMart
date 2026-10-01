@@ -8,7 +8,8 @@ console.log("USER ROUTE IMPORTED");
 
 userRouter.get("/current", isAuth, getUser);
 
-// 📍 Yeh naya route add karna hai taaki 404 error na aaye
+// 📍 City & Location update routes
 userRouter.post("/update-city", isAuth, updateCity);
+userRouter.post("/update-location", isAuth, updateCity);
 
-export default userRouter;
+export default userRouter;

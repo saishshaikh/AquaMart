@@ -19,8 +19,12 @@ const DeliveryMap = ({ userLat, userLng, userAddress }) => {
   const dropLat = userLat || 19.27407575; // Fallback customer lat
   const dropLng = userLng || 73.1424845;  // Fallback customer lng
 
+  const hasApiKey = Boolean(apiKey && apiKey.trim() !== '');
+
   // 2️⃣ Geoapify Static Map Image Generator with 2 Markers (Boy = Blue Marker, Drop = Red Marker)
-  const mapImageUrl = `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=300&center=lonlat:${boyLng},${boyLat}&zoom=13&marker=lonlat:${boyLng},${boyLat};color:%2300b4d8;size:medium;text:🛵|lonlat:${dropLng},${dropLat};color:%23ff4d6d;size:medium;text:🏠&apiKey=${apiKey}`;
+  const mapImageUrl = hasApiKey
+    ? `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=300&center=lonlat:${boyLng},${boyLat}&zoom=13&marker=lonlat:${boyLng},${boyLat};color:%2300b4d8;size:medium;text:🛵|lonlat:${dropLng},${dropLat};color:%23ff4d6d;size:medium;text:🏠&apiKey=${apiKey}`
+    : null;
 
   // 3️⃣ Turn-By-Turn Navigation (Google Maps External App Trigger)
   const handleOpenGoogleMaps = () => {
@@ -40,7 +44,7 @@ const DeliveryMap = ({ userLat, userLng, userAddress }) => {
             <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
           </span>
           <span className="text-xs font-semibold text-cyan-300">
-            {mapState.isLocating ? "Locating Delivery Partner..." : "Geoapify Live Navigation"}
+            {mapState.isLocating ? "Locating Delivery Partner..." : "Live Navigation"}
           </span>
         </div>
 
@@ -59,7 +63,7 @@ const DeliveryMap = ({ userLat, userLng, userAddress }) => {
             <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
             Detecting exact GPS position...
           </div>
-        ) : (
+        ) : hasApiKey ? (
           <img
             src={mapImageUrl}
             alt="Delivery Route Map"
@@ -69,6 +73,12 @@ const DeliveryMap = ({ userLat, userLng, userAddress }) => {
               e.target.src = "https://via.placeholder.com/600x300?text=Map+Location+Error";
             }}
           />
+        ) : (
+          <div className="flex flex-col items-center justify-center p-4 text-center">
+            <span className="text-3xl mb-2">🛵 ➔ 🏠</span>
+            <p className="text-xs text-slate-300 font-medium">Ready for Delivery</p>
+            <p className="text-[11px] text-cyan-400 mt-1">Tap 'Navigate via GPS' above for live Google Maps directions</p>
+          </div>
         )}
       </div>
 

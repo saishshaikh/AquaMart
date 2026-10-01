@@ -63,23 +63,26 @@ function useGetCity() {
                         console.log("🔄 Trying OpenStreetMap fallback...");
                         try {
                             const osmResult = await axios.get(
-                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-                                {
-                                    headers: {
-                                        'User-Agent': 'Synexa.Ai - Location Detection'
-                                    }
-                                }
+                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
                             );
 
                             if (osmResult.data && osmResult.data.address) {
                                 const addr = osmResult.data.address;
-                                exactCity = exactCity || addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
+                                exactCity = exactCity || addr.city || addr.town || addr.village || addr.municipality || addr.city_district || addr.suburb || addr.neighbourhood || addr.state_district || addr.county || "";
                                 exactState = exactState || addr.state || "";
                                 exactPincode = exactPincode || addr.postcode || "";
-                                streetName = streetName || addr.road || addr.street || addr.suburb || "";
+                                streetName = streetName || addr.road || addr.street || addr.residential || addr.suburb || "";
 
                                 const houseNumber = addr.house_number || "";
                                 const displayName = osmResult.data.display_name || "";
+
+                                // If exactCity is still empty, try extracting from displayName or state
+                                if (!exactCity && displayName) {
+                                    const parts = displayName.split(',').map(p => p.trim());
+                                    if (parts.length >= 2) {
+                                        exactCity = parts[parts.length - 3] || parts[parts.length - 2] || exactState || "Local Area";
+                                    }
+                                }
 
                                 // Build full address from OSM
                                 fullAddress = "";
@@ -108,22 +111,28 @@ function useGetCity() {
                         dispatch(setCity(exactCity));
                         dispatch(setAddress(fullAddress || exactCity));
 
-                        try {
-                            await axios.post(
-                                `${serverUrl}/api/user/update-location`,
-                                {
-                                    city: exactCity,
-                                    address: fullAddress,
-                                    state: exactState,
-                                    pincode: exactPincode,
-                                    latitude: latitude,
-                                    longitude: longitude
-                                },
-                                { withCredentials: true }
-                            );
-                            console.log("✅ Full location updated on backend");
-                        } catch (err) {
-                            console.log("❌ Backend update error:", err.response?.data || err.message);
+                        const token = localStorage.getItem("token");
+                        if (token) {
+                            try {
+                                await axios.post(
+                                    `${serverUrl}/api/user/update-location`,
+                                    {
+                                        city: exactCity,
+                                        address: fullAddress,
+                                        state: exactState,
+                                        pincode: exactPincode,
+                                        latitude: latitude,
+                                        longitude: longitude
+                                    },
+                                    { 
+                                        headers: { Authorization: `Bearer ${token}` },
+                                        withCredentials: true 
+                                    }
+                                );
+                                console.log("✅ Full location updated on backend");
+                            } catch (err) {
+                                console.log("❌ Backend update error:", err.response?.data || err.message);
+                            }
                         }
                     } else {
                         console.log("⚠️ No city detected from location");

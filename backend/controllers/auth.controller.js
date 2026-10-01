@@ -63,7 +63,7 @@ const signup = async (req, res) => {
         });
 
         // Generate JWT token
-        const token = GenerateToken(user._id);
+        const token = GenerateToken(user._id, user.role);
 
         // Set cookie
         res.cookie("token", token, {
@@ -130,8 +130,8 @@ const signin = async (req, res) => {
             });
         }
 
-        // ✅ Token generate karo
-        const token = GenerateToken(user._id);
+        // ✅ Token generate karo with user role
+        const token = GenerateToken(user._id, user.role);
         console.log("✅ Token generated for user:", user.email);
 
         // ✅ Cookie mein set karo
@@ -394,7 +394,7 @@ const googleAuth = async (req, res) => {
     console.log("✅ Google User:", user.email);
     console.log("✅ User ID:", user._id);
 
-    const token = GenerateToken(user._id);
+    const token = GenerateToken(user._id, user.role);
 
     console.log("✅ Generated Token:", token);
 

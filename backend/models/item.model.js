@@ -17,12 +17,25 @@ const itemSchema = new mongoose.Schema({
     // 🟢 BEST FIX: Item ki category enum set kar di
     category: {
         type: String,
-        enum: ["Fresh Fish", "Dry Fish", "Prawns", "Crabs", "Lobsters", "Oysters", "Other Seafood"],
-        required: true
+        required: true,
+        trim: true
     },
-    price : {
+    price: {
         type: Number,
-        required : true
+        required: true,
+        min: 0
+    },
+    description: {
+        type: String,
+        default: ""
+    },
+    stock: {
+        type: Number,
+        default: 100
+    },
+    isAvailable: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 

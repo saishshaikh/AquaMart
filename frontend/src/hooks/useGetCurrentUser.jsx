@@ -19,11 +19,16 @@ const useGetCurrentUser = () => {
     const getCurrentUser = async () => {
       try {
         const token = localStorage.getItem("token");
+        if (!token) {
+          dispatch(setUserData(null));
+          setLoading(false);
+          return;
+        }
 
         const res = await axios.get(
           `${serverUrl}/api/user/current`,
           {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
           }
         );

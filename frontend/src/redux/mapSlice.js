@@ -20,22 +20,46 @@ export const fetchCurrentLocation = createAsyncThunk(
           async (position) => {
             try {
               const { latitude, longitude } = position.coords;
-              
-              // Reverse Geocode: Lat/Lng to Address
-              const response = await axios.get(
-                `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`
-              );
-              
-              const location = response.data.results[0];
-              const addressLine1 = location.address_line1 || "";
-              const addressLine2 = location.address_line2 || "";
-              const fullAddress = addressLine1 + (addressLine2 ? ", " + addressLine2 : "");
+              let fullAddress = "";
+              let city = "Mumbai";
+
+              if (apiKey && apiKey.trim() !== "") {
+                try {
+                  const response = await axios.get(
+                    `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`
+                  );
+                  const location = response.data.results?.[0];
+                  if (location) {
+                    const addressLine1 = location.address_line1 || "";
+                    const addressLine2 = location.address_line2 || "";
+                    fullAddress = addressLine1 + (addressLine2 ? ", " + addressLine2 : "");
+                    city = location.city || location.town || location.district || "Mumbai";
+                  }
+                } catch (geoErr) {
+                  console.warn("Geoapify reverse geocoding failed:", geoErr);
+                }
+              }
+
+              if (!fullAddress) {
+                try {
+                  const osmRes = await axios.get(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+                  );
+                  if (osmRes.data) {
+                    fullAddress = osmRes.data.display_name || "";
+                    const addr = osmRes.data.address || {};
+                    city = addr.city || addr.town || addr.village || addr.municipality || addr.city_district || addr.suburb || addr.state_district || "Mumbai";
+                  }
+                } catch (osmErr) {
+                  console.warn("OSM reverse geocoding failed:", osmErr);
+                }
+              }
 
               resolve({
                 latitude,
                 longitude,
                 address: fullAddress || "Location detected",
-                city: location.city || location.town || location.district || "Unknown"
+                city: city || "Mumbai"
               });
             } catch (error) {
               reject(error.message);
@@ -56,20 +80,35 @@ export const searchAddress = createAsyncThunk(
   "map/searchAddress",
   async (query, { rejectWithValue }) => {
     try {
-      const response = await axios.get(
-        `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&format=json&apiKey=${apiKey}`
-      );
+      if (apiKey && apiKey.trim() !== "") {
+        const response = await axios.get(
+          `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&format=json&apiKey=${apiKey}`
+        );
 
-      if (response.data.results && response.data.results.length > 0) {
-        const result = response.data.results[0];
-        return {
-          latitude: result.lat,
-          longitude: result.lon,
-          address: result.address_line1 || query,
-        };
-      } else {
-        throw new Error("Location not found");
+        if (response.data.results && response.data.results.length > 0) {
+          const result = response.data.results[0];
+          return {
+            latitude: result.lat,
+            longitude: result.lon,
+            address: result.address_line1 || query,
+          };
+        }
       }
+
+      // OSM search fallback
+      const osmRes = await axios.get(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
+      );
+      if (osmRes.data && osmRes.data.length > 0) {
+        const item = osmRes.data[0];
+        return {
+          latitude: parseFloat(item.lat),
+          longitude: parseFloat(item.lon),
+          address: item.display_name || query,
+        };
+      }
+
+      throw new Error("Location not found");
     } catch (error) {
       return rejectWithValue(error.message);
     }

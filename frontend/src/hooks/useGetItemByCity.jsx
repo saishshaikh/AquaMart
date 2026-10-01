@@ -9,14 +9,12 @@ export function useGetItemByCity(city) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!city) return; // ✅ City na ho toh fetch mat karo
-
     const fetchAllItems = async () => {
       setLoading(true);
       try {
         const res = await axios.get(`${serverUrl}/api/item/all-items`);
         if (res.data?.success) {
-          dispatch(setItems(res.data.items));
+          dispatch(setItems(res.data.items || []));
         }
       } catch (err) {
         console.error("Error fetching all items:", err);
@@ -25,8 +23,8 @@ export function useGetItemByCity(city) {
       }
     };
 
-    fetchAllItems(); // ✅ Sirf city change hone par run hoga
-  }, [city, dispatch]); // ✅ City change hone par hi fetch karo
+    fetchAllItems();
+  }, [city, dispatch]);
 
   return { loading };
 }

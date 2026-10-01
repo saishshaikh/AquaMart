@@ -33,7 +33,7 @@ export const addItem = async (req, res) => {
         const updatedShop = await Shop.findByIdAndUpdate(
             shop._id,
             { $push: { items: item._id } },
-            { new: true }
+            { returnDocument: 'after' }
         ).populate("items");
 
         return res.status(201).json({
@@ -73,7 +73,7 @@ export const editItem = async (req, res) => {
         const item = await Item.findByIdAndUpdate(
             itemId, 
             updateData, 
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (!item) {
@@ -109,7 +109,7 @@ export const deleteItem = async (req, res) => {
         await Shop.findByIdAndUpdate(
             item.shop,
             { $pull: { items: itemId } },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         return res.status(200).json({
