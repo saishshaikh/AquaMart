@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
@@ -19,7 +20,7 @@ import ProductDetails from "./pages/ProductDetails";
 // Order Pages
 import OrderPlaced from "./pages/OrderPlaced";
 import MyOrders from "./pages/MyOrders";
-import OwnerOrders from "./pages/OwnerOrders"; // ✅ CORRECT IMPORT
+import OwnerOrders from "./pages/OwnerOrders";
 
 // Hooks
 import useGetCity from "./hooks/useGetCity";
@@ -29,6 +30,9 @@ import { useGetShopsByCity } from "./hooks/useGetShopsByCity";
 import { useGetItemByCity } from "./hooks/useGetItemByCity";
 
 import AquaBot from "./components/AquaBot";
+import NotificationPermissionBanner from "./components/NotificationPermissionBanner";
+import PwaInstallPrompt from "./components/PwaInstallPrompt";
+import { registerServiceWorker } from "./utils/pushNotification";
 
 export const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8000";
 
@@ -40,6 +44,11 @@ function App() {
   useGetMyShop();
   useGetShopsByCity(city);
   useGetItemByCity(city);
+
+  // Initialize PWA Service Worker
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
   
   return (
     <>
@@ -93,16 +102,30 @@ function App() {
         }
       />
 
-      {/* Home */}
+      {/* Home & Structured Section Routes */}
       <Route
         path="/home"
-        element={
-          userData ? (
-            <Home />
-          ) : (
-            <Navigate to="/signin" replace />
-          )
-        }
+        element={userData ? <Home /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/products"
+        element={userData ? <Home defaultSection="products" /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/delivery"
+        element={userData ? <Home defaultSection="delivery" /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/contact"
+        element={userData ? <Home defaultSection="contact" /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/about"
+        element={userData ? <Home defaultSection="about" /> : <Navigate to="/signin" replace />}
+      />
+      <Route
+        path="/faq"
+        element={userData ? <Home defaultSection="faq" /> : <Navigate to="/signin" replace />}
       />
 
       {/* Dashboard Route Aliases */}
@@ -169,12 +192,12 @@ function App() {
         }
       />
 
-      {/* ✅ Owner Orders Page (For Admin/Owner Tracking) - URL is /shop-orders */}
+      {/* Owner Orders Page */}
       <Route
         path="/shop-orders"
         element={
           userData?.role === "admin" || userData?.role === "owner" ? (
-            <OwnerOrders /> // ✅ Using OwnerOrders component
+            <OwnerOrders />
           ) : (
             <Navigate to="/home" replace />
           )
@@ -230,6 +253,12 @@ function App() {
 
     {/* Global Floating AI Seafood Concierge Assistant */}
     <AquaBot />
+
+    {/* Non-intrusive Web Push Notification Permission Banner */}
+    <NotificationPermissionBanner />
+
+    {/* PWA Mobile & Desktop Install Prompt */}
+    <PwaInstallPrompt />
     </>
   );
 }

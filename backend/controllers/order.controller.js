@@ -3,6 +3,7 @@ import Shop from "../models/shop.model.js";
 import Item from "../models/item.model.js";
 import User from "../models/user.model.js";
 import mongoose from "mongoose";
+import { createNotificationHelper } from "./notification.controller.js";
 
 // ==========================================
 // 1. PLACE ORDER
@@ -150,6 +151,16 @@ export const placeOrder = async (req, res) => {
         });
 
         await newOrder.save();
+
+        // Send In-App & Web Push Notification to User
+        createNotificationHelper({
+            userId,
+            title: "📦 Order Placed Successfully!",
+            message: `Your seafood order #${newOrder._id.toString().slice(-6).toUpperCase()} of ₹${totalAmount} has been confirmed. Fresh catch dispatch in progress!`,
+            type: "order",
+            orderId: newOrder._id,
+            url: "/my-orders"
+        }).catch(() => {});
 
         // Update item stock safely
         for (const shopGroup of Object.values(groupItemsByShop)) {

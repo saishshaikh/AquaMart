@@ -5,7 +5,7 @@ import DeliveryDashboard from "../components/DeliveryDashboard";
 import AdminDashboard from "../components/AdminDashboard";
 import useGetCurrentUser from "../hooks/useGetCurrentUser";
 
-function Home() {
+function Home({ defaultSection = "home" }) {
   const { loading } = useGetCurrentUser();
   const { userData } = useSelector((state) => state.user);
 
@@ -30,7 +30,7 @@ function Home() {
       return (
         <div className="min-h-screen bg-[#020617]">
           <Nav1 />
-          <UserDashboard />
+          <UserDashboard defaultSection={defaultSection} />
         </div>
       );
 
@@ -48,7 +48,6 @@ function Home() {
     case "deliveryboy":
       return (
         <div className="min-h-screen bg-[#020617]">
-          {/* Active delivery view */}
           <Nav1 />
           <DeliveryDashboard />
         </div>

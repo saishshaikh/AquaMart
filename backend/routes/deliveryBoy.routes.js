@@ -1,9 +1,9 @@
 import express from "express";
-import { 
-    registerDeliveryBoy, 
-    loginDeliveryBoy, 
-    getAvailableOrders, 
-    acceptDelivery, 
+import {
+    registerDeliveryBoy,
+    loginDeliveryBoy,
+    getAvailableOrders,
+    acceptDelivery,
     updateLocation,
     getActiveOrder,
     completeDelivery // ✅ NEW: Import completeDelivery
@@ -18,7 +18,7 @@ router.post("/login", loginDeliveryBoy);
 
 // 🔒 Protected Delivery Partner Routes
 router.get("/available-orders", isAuth, isDeliveryBoy, getAvailableOrders);
-router.get("/active-order", isAuth, isDeliveryBoy, getActiveOrder); 
+router.get("/active-order", isAuth, isDeliveryBoy, getActiveOrder);
 router.post("/accept", isAuth, isDeliveryBoy, acceptDelivery);
 router.put("/location", isAuth, isDeliveryBoy, updateLocation);
 

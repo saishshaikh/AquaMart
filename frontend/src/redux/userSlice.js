@@ -1,5 +1,16 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const initialTheme = localStorage.getItem("aquamart_theme") || "dark";
+if (typeof document !== "undefined") {
+    if (initialTheme === "light") {
+        document.documentElement.classList.add("light");
+        document.documentElement.classList.remove("dark");
+    } else {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+    }
+}
+
 const userSlice = createSlice({
     name: "user",
 
@@ -10,6 +21,7 @@ const userSlice = createSlice({
         shops: [],
         items: [],
         cartitems: [],
+        theme: initialTheme,
     },
 
     reducers: {
@@ -33,6 +45,36 @@ const userSlice = createSlice({
             state.items = action.payload;
         },
 
+        toggleTheme: (state) => {
+            const nextTheme = state.theme === "light" ? "dark" : "light";
+            state.theme = nextTheme;
+            localStorage.setItem("aquamart_theme", nextTheme);
+            if (typeof document !== "undefined") {
+                if (nextTheme === "light") {
+                    document.documentElement.classList.add("light");
+                    document.documentElement.classList.remove("dark");
+                } else {
+                    document.documentElement.classList.add("dark");
+                    document.documentElement.classList.remove("light");
+                }
+            }
+        },
+
+        setTheme: (state, action) => {
+            const nextTheme = action.payload;
+            state.theme = nextTheme;
+            localStorage.setItem("aquamart_theme", nextTheme);
+            if (typeof document !== "undefined") {
+                if (nextTheme === "light") {
+                    document.documentElement.classList.add("light");
+                    document.documentElement.classList.remove("dark");
+                } else {
+                    document.documentElement.classList.add("dark");
+                    document.documentElement.classList.remove("light");
+                }
+            }
+        },
+
         // ==========================================
         // 🟢 FIXED CART REDUCERS (Weight = Grams)
         // ==========================================
@@ -46,13 +88,11 @@ const userSlice = createSlice({
             );
 
             if (existingItem) {
-                // 🟢 Agar item pehle se hai, toh kuch mat karo (ya default 1kg rahne do)
                 existingItem.quantity = existingItem.quantity || 1000;
             } else {
-                // 🟢 Naya item add karte waqt DEFAULT 1000g (1kg) set karo
                 state.cartitems.push({ 
                     ...item, 
-                    quantity: 1000, // 🟢 YAHAN FIX HAI! 1kg = 1000g
+                    quantity: 1000,
                     _id: itemId 
                 });
             }
@@ -67,7 +107,6 @@ const userSlice = createSlice({
             );
         },
 
-        // 🟢 FIXED UPDATE QUANTITY (Direct Weight Set)
         updateQuantity: (state, action) => {
             const { _id, id, quantity } = action.payload;
             const itemId = _id || id;
@@ -77,7 +116,6 @@ const userSlice = createSlice({
             );
             
             if (item) {
-                // 🟢 Seedha quantity (grams) set kar do
                 item.quantity = quantity;
             }
         },
@@ -107,7 +145,9 @@ export const {
     removeFromCart, 
     updateQuantity, 
     clearCart,
-    resetUserState
+    resetUserState,
+    toggleTheme,
+    setTheme
 } = userSlice.actions;
 
 export default userSlice.reducer;

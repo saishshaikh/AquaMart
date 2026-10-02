@@ -3,14 +3,203 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --bg-main: #070d18;
+    --bg-card: rgba(15, 23, 42, 0.75);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+  }
+
+  :root.light,
+  .light {
+    color-scheme: light;
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
   }
 
   body {
-    background-color: #070d18;
-    color: #f1f5f9;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     overflow-x: hidden;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
+
+  .light body,
+  :root.light body {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+}
+
+/* ==========================================================================
+   Comprehensive Light Mode Overrides
+   ========================================================================== */
+.light {
+  /* Surface backgrounds */
+  --tw-bg-opacity: 1;
+}
+
+.light header,
+.light nav {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light header h1,
+.light header .text-white,
+.light nav .text-white {
+  color: #0f172a !important;
+}
+
+.light header .text-slate-200,
+.light header .text-slate-300,
+.light nav .text-slate-200,
+.light nav .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light header .bg-white\/5,
+.light header .bg-white\/10,
+.light nav .bg-white\/5,
+.light nav .bg-white\/10 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Light Mode Global Elements, Sections & Cards */
+.light .bg-slate-950,
+.light .bg-slate-900,
+.light .bg-\[\#070d18\],
+.light .bg-\[\#0a0f1d\],
+.light .bg-\[\#050b14\],
+.light .bg-\[\#0b1220\],
+.light .bg-\[\#090e1a\] {
+  background-color: #ffffff !important;
+}
+
+.light .bg-slate-900\/95,
+.light .bg-slate-900\/90,
+.light .bg-slate-900\/80,
+.light .bg-slate-900\/70,
+.light .bg-slate-900\/60,
+.light .bg-slate-900\/50,
+.light .bg-slate-900\/40,
+.light .bg-slate-950\/95,
+.light .bg-slate-950\/90,
+.light .bg-slate-950\/85,
+.light .bg-slate-950\/80,
+.light .bg-white\/5,
+.light .bg-white\/10 {
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+.light .border-slate-800,
+.light .border-slate-800\/80,
+.light .border-slate-700,
+.light .border-white\/10,
+.light .border-white\/5,
+.light .border-white\/20,
+.light .border-white\/30 {
+  border-color: #e2e8f0 !important;
+}
+
+.light .text-white {
+  color: #0f172a !important;
+}
+
+.light .text-slate-100,
+.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Accent colors in Light Mode */
+.light .text-cyan-400,
+.light .text-cyan-300 {
+  color: #0891b2 !important;
+}
+
+.light .bg-cyan-500\/10,
+.light .bg-cyan-500\/20 {
+  background-color: rgba(6, 182, 212, 0.12) !important;
+}
+
+.light .border-cyan-500\/30,
+.light .border-cyan-500\/20,
+.light .border-cyan-500\/40 {
+  border-color: rgba(6, 182, 212, 0.35) !important;
+}
+
+/* Inputs & Forms in Light Mode */
+.light input,
+.light textarea,
+.light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: #0891b2 !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2) !important;
+}
+
+/* Footer in Light Mode */
+.light footer {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+.light footer h2,
+.light footer h3,
+.light footer h4,
+.light footer .text-white {
+  color: #0f172a !important;
+}
+
+.light footer p,
+.light footer a,
+.light footer span {
+  color: #475569 !important;
+}
+
+.light footer .bg-slate-900,
+.light footer .bg-slate-900\/70 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Modals & Drawers in Light Mode */
+.light .modal-content,
+.light .drawer-content {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
 
 /* Custom Scrollbar */
@@ -23,9 +212,17 @@
   background: #070d18;
 }
 
+.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #1e293b;
   border-radius: 9999px;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
 }
 
 ::-webkit-scrollbar-thumb:hover {

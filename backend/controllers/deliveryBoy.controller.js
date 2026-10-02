@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import Order from "../models/order.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { createNotificationHelper } from "./notification.controller.js";
 
 // ==========================================
 // 1. DELIVERY BOY REGISTER
@@ -200,6 +201,16 @@ export const acceptDelivery = async (req, res) => {
         deliveryBoyName: user.fullName,
         deliveryBoyMobile: user.mobile,
       });
+
+      // Send Push Notification
+      createNotificationHelper({
+        userId: updatedOrder.user,
+        title: "🚚 Delivery Partner Assigned!",
+        message: `${user.fullName} is delivering your order #${updatedOrder._id.toString().slice(-6).toUpperCase()}. Track live on map!`,
+        type: "delivery",
+        orderId: updatedOrder._id,
+        url: "/my-orders"
+      }).catch(() => {});
     }
 
     res.status(200).json({ success: true, message: "Order Accepted Successfully!", order: updatedOrder });
@@ -329,13 +340,16 @@ export const completeDelivery = async (req, res) => {
         status: "delivered",
         deliveredAt: new Date(),
       });
-      global.io.emit(`notification:${order.user}`, {
-        title: "Order Delivered 🎉",
-        message: `Your seafood order #${order._id.toString().slice(-6).toUpperCase()} has been delivered successfully! Enjoy your fresh catch!`,
-        type: "delivery",
-        orderId: order._id
-      });
     }
+
+    createNotificationHelper({
+      userId: order.user,
+      title: "🎉 Order Delivered!",
+      message: `Your seafood order #${order._id.toString().slice(-6).toUpperCase()} has been delivered successfully! Enjoy your fresh catch.`,
+      type: "delivery",
+      orderId: order._id,
+      url: "/my-orders"
+    }).catch(() => {});
 
     res.status(200).json({ success: true, message: "Order marked as delivered with OTP verification!" });
   } catch (error) {

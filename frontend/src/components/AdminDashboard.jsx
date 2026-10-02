@@ -7,17 +7,19 @@ import {
   Globe, Droplets, Trash2, Sparkles, ShieldCheck, 
   TrendingUp, Package, Compass, LayoutGrid, X,
   UploadCloud, CheckCircle, Navigation, Building, LocateFixed,
-  ShoppingBag, Users, Award, Clock
+  ShoppingBag, Users, Award, Clock, Megaphone, Bell
 } from 'lucide-react';
 import gsap from 'gsap';
 import { serverUrl } from '../App';
 import useGetMyShop from "../hooks/useGetMyShop";
+import AdminNotificationBroadcast from './AdminNotificationBroadcast';
 
 function AdminDashboard() {
   const navigate = useNavigate();
   const { myShopData } = useSelector((state) => state.owner);
   const { userData } = useSelector((state) => state.user);
 
+  const [activeAdminTab, setActiveAdminTab] = useState('shops'); // 'shops' | 'broadcast'
   const [allShops, setAllShops] = useState([]);
   const [selectedShopId, setSelectedShopId] = useState(null);
   const [loadingShops, setLoadingShops] = useState(false);
@@ -781,7 +783,7 @@ function AdminDashboard() {
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
                 Admin Dashboard <ShieldCheck className="text-cyan-400 w-5 h-5 inline-block" />
               </h1>
-              <p className="text-xs text-cyan-300/80 font-medium">Manage all shops and their menus</p>
+              <p className="text-xs text-cyan-300/80 font-medium">Manage shops, menus, and web push notifications</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -795,52 +797,91 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* 📊 REAL-TIME BUSINESS METRICS CARDS */}
-        <div className="relative z-10 w-full max-w-4xl grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
-            <span className="text-[11px] text-slate-400 font-semibold uppercase">Total Revenue</span>
-            <span className="text-2xl font-black text-cyan-400 font-mono block">
-              ₹{stats?.revenue?.totalRevenue || 12450}
-            </span>
-            <span className="text-[10px] text-emerald-400">● 100% Real-time</span>
-          </div>
-
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
-            <span className="text-[11px] text-slate-400 font-semibold uppercase">Total Orders</span>
-            <span className="text-2xl font-black text-white font-mono block">
-              {stats?.totalOrders || 24}
-            </span>
-            <span className="text-[10px] text-cyan-400">● Today: {stats?.todayOrders || 5}</span>
-          </div>
-
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
-            <span className="text-[11px] text-slate-400 font-semibold uppercase">Pending Fulfillment</span>
-            <span className="text-2xl font-black text-amber-400 font-mono block">
-              {stats?.pendingOrders || 3}
-            </span>
-            <span className="text-[10px] text-amber-400">● Needs Dispatch</span>
-          </div>
-
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
-            <span className="text-[11px] text-slate-400 font-semibold uppercase">Active Docks / Shops</span>
-            <span className="text-2xl font-black text-emerald-400 font-mono block">
-              {allShops.length}
-            </span>
-            <span className="text-[10px] text-slate-400">● Online Nodes</span>
-          </div>
-        </div>
-
-        {/* Create Shop Button */}
-        <div className="relative z-10 w-full max-w-4xl">
-          <button 
-            onClick={() => setShowCreateShop(true)} 
-            onMouseEnter={(e) => handleMouseEnter(e, 1.02)} 
-            onMouseLeave={handleMouseLeave} 
-            className="w-full py-4 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border-2 border-dashed border-cyan-500/40 rounded-3xl text-cyan-400 font-semibold hover:border-cyan-500 hover:bg-cyan-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+        {/* 📑 TAB SELECTOR: SHOPS VS NOTIFICATION BROADCAST */}
+        <div className="relative z-10 w-full max-w-4xl flex items-center gap-2 bg-slate-900/80 border border-slate-800 p-1.5 rounded-2xl shadow-xl">
+          <button
+            onClick={() => setActiveAdminTab('shops')}
+            className={`flex-1 py-2.5 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeAdminTab === 'shops'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
           >
-            <Plus size={20} /> Create New Shop / Dock
+            <Store size={15} />
+            <span>Shops & Menus Management</span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('broadcast')}
+            className={`flex-1 py-2.5 px-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeAdminTab === 'broadcast'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Megaphone size={15} />
+            <span>📢 Web Push Broadcast & Alerts</span>
           </button>
         </div>
+
+        {/* TAB 2: BROADCAST NOTIFICATIONS */}
+        {activeAdminTab === 'broadcast' && (
+          <div className="relative z-10 w-full max-w-4xl">
+            <AdminNotificationBroadcast />
+          </div>
+        )}
+
+        {/* TAB 1: SHOPS & INVENTORY MANAGEMENT */}
+        {activeAdminTab === 'shops' && (
+          <>
+            {/* 📊 REAL-TIME BUSINESS METRICS CARDS */}
+            <div className="relative z-10 w-full max-w-4xl grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase">Total Revenue</span>
+                <span className="text-2xl font-black text-cyan-400 font-mono block">
+                  ₹{stats?.revenue?.totalRevenue || 12450}
+                </span>
+                <span className="text-[10px] text-emerald-400">● 100% Real-time</span>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase">Total Orders</span>
+                <span className="text-2xl font-black text-white font-mono block">
+                  {stats?.totalOrders || 24}
+                </span>
+                <span className="text-[10px] text-cyan-400">● Today: {stats?.todayOrders || 5}</span>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase">Pending Fulfillment</span>
+                <span className="text-2xl font-black text-amber-400 font-mono block">
+                  {stats?.pendingOrders || 3}
+                </span>
+                <span className="text-[10px] text-amber-400">● Needs Dispatch</span>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-3xl space-y-1 shadow-xl">
+                <span className="text-[11px] text-slate-400 font-semibold uppercase">Active Docks / Shops</span>
+                <span className="text-2xl font-black text-emerald-400 font-mono block">
+                  {allShops.length}
+                </span>
+                <span className="text-[10px] text-slate-400">● Online Nodes</span>
+              </div>
+            </div>
+
+            {/* Create Shop Button */}
+            <div className="relative z-10 w-full max-w-4xl">
+              <button 
+                onClick={() => setShowCreateShop(true)} 
+                onMouseEnter={(e) => handleMouseEnter(e, 1.02)} 
+                onMouseLeave={handleMouseLeave} 
+                className="w-full py-4 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border-2 border-dashed border-cyan-500/40 rounded-3xl text-cyan-400 font-semibold hover:border-cyan-500 hover:bg-cyan-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+              >
+                <Plus size={20} /> Create New Shop / Dock
+              </button>
+            </div>
+          </>
+        )}
 
         {/* All Shops Grid */}
         <div className="relative z-10 w-full max-w-4xl">
