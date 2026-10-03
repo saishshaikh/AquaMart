@@ -1,0 +1,58 @@
+services:
+  # ----------------------------------------------------
+  # 1. Backend Web Service (Node.js API + Socket.IO)
+  # ----------------------------------------------------
+  - type: web
+    name: aquamart-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: IMAGEKIT_PUBLIC_KEY
+        sync: false
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false
+      - key: IMAGEKIT_URL_ENDPOINT
+        sync: false
+      - key: EMAIL
+        sync: false
+      - key: PASS
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: "mailto:support@aquamart.in"
+
+  # ----------------------------------------------------
+  # 2. Frontend Static Site (React + Vite)
+  # ----------------------------------------------------
+  - type: web
+    name: aquamart-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SERVER_URL
+        fromService:
+          type: web
+          name: aquamart-backend
+          property: host
