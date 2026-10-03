@@ -251,8 +251,8 @@ function App() {
 
     </Routes>
 
-    {/* Global Floating AI Seafood Concierge Assistant */}
-    <AquaBot />
+    {/* Global Floating AI Seafood Concierge Assistant (Only for logged-in users) */}
+    {userData && <AquaBot />}
 
     {/* Non-intrusive Web Push Notification Permission Banner */}
     <NotificationPermissionBanner />

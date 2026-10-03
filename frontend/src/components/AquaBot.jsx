@@ -166,6 +166,8 @@ const AquaBot = () => {
     ]);
   };
 
+  if (!userData) return null;
+
   return (
     <>
       {/* 🌟 FLOATING LAUNCHER BUTTON (Fades out when scrolling down) */}
